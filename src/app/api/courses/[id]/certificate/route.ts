@@ -5,7 +5,9 @@ import { sendResponse } from "@/utils/response";
 import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
-export const POST = async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = async (req: NextRequest, 
+  context: { params: Promise<{ id: string }> 
+}) => {
   try {
     let body: unknown;
     try {
@@ -14,7 +16,7 @@ export const POST = async (req: NextRequest, { params }: { params: Promise<{ id:
       body = {};
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const userId = await getUserIdFromSession();
     
     if (!userId) {
@@ -66,9 +68,11 @@ export const POST = async (req: NextRequest, { params }: { params: Promise<{ id:
 };
 
 
-export const GET = async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = async (req: NextRequest, 
+  context: { params: Promise<{ id: string }> 
+}) => {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const userId = await getUserIdFromSession();
     
     if (!userId) {
@@ -114,48 +118,3 @@ export const GET = async (req: NextRequest, { params }: { params: Promise<{ id: 
   }
 };
 
-export const PATCH = async (
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string; ids: string }> }
-) => {
-  try {
-    const { id: courseId, ids: moduleId } = await params;
-    const userId = await getUserIdFromSession();
-
-    if (!userId) {
-      return sendResponse(401, null, "Unauthorized");
-    }
-
-    const body = await req.json();
-    const { isCompleted } = body;
-
-    await db
-      .update(courseModules)
-      .set({ isCompleted })
-      .where(eq(courseModules.id, moduleId));
-
-    const allModules = await db
-      .select()
-      .from(courseModules)
-      .where(eq(courseModules.courseId, courseId));
-
-    const allCompleted = allModules.every((module) => module.isCompleted);
-
-    if (allCompleted && allModules.length > 0) {
-      await db
-        .update(course)
-        .set({ isCourseCompleted: true })
-        .where(eq(course.id, courseId));
-    } else {
-      await db
-        .update(course)
-        .set({ isCourseCompleted: false })
-        .where(eq(course.id, courseId));
-    }
-
-    return sendResponse(200, null, "Module updated successfully");
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An error occurred";
-    return sendResponse(500, null, errorMessage);
-  }
-};
