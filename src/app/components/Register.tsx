@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAddUsers } from '@/hooks/useRegister';
 
-// Constants
 const USER_TYPES = [
   { value: 'farmer', label: '🌾 Farmer', desc: 'Growing crops and livestock' },
   { value: 'buyer', label: '🛒 Buyer', desc: 'Purchasing agricultural products' },

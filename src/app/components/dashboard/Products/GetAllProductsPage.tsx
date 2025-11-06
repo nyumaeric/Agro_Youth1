@@ -1,10 +1,15 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import { useAllProductsByUser } from "@/hooks/products/useGetAllProducts";
+import { useState } from "react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import CreateProductDialog from "../CreateProduct";
 
 export default function AllProducts() {
   const { data, isPending } = useAllProductsByUser();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
   const products = data?.data || [];
 
   if (isPending) {
@@ -25,13 +30,16 @@ export default function AllProducts() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-8">
       <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">All Products</h2>
           <p className="text-sm text-gray-500 mt-1">{products.length} products available</p>
         </div>
-        <Button className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+        <Button className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 cursor-pointer"
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
+
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -53,13 +61,13 @@ export default function AllProducts() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-xl font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">
+                <h3 className="text-xl font-bold text-gray-900 group-hover:text-gray-600 transition-colors">
                   {product.cropName}
                 </h3>
                 <span
                   className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
                     product.isAvailable
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-yellow-100 text-emerald-700"
                       : "bg-gray-100 text-gray-600"
                   }`}
                 >
@@ -76,7 +84,7 @@ export default function AllProducts() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400 font-medium">Price:</span>
-                  <span className="font-bold text-emerald-600 text-base">
+                  <span className="font-bold text-gray-600 text-base">
                     ${product.price}
                   </span>
                 </div>
@@ -93,7 +101,6 @@ export default function AllProducts() {
               </p>
             </div>
 
-            {/* Action Icons */}
             <div className="flex-shrink-0 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <button className="p-2 hover:bg-white rounded-lg transition-colors" title="Edit">
                 <svg className="w-5 h-5 text-gray-400 hover:text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -129,6 +136,10 @@ export default function AllProducts() {
           <p className="text-sm text-gray-500">Get started by creating your first product</p>
         </div>
       )}
+      <CreateProductDialog 
+        open={isCreateDialogOpen} 
+        onOpenChange={setIsCreateDialogOpen}
+      />
     </div>
   );
 }

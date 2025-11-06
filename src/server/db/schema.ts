@@ -124,6 +124,7 @@ export const product = pgTable("products", {
     unit: varchar("unit").notNull(),
     price: integer("price").notNull(),
     userId: uuid("userId").references(() => users.id).notNull(),
+    
     description: text("description").notNull(),
     isAvailable: boolean("isAvailable").notNull().default(true),
 });

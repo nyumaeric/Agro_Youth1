@@ -23,7 +23,7 @@ const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50 to-emerald pb-20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50 to-emerald py-14">
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 lg:pt-32 lg:pb-32">
           <div className="text-center max-w-4xl mx-auto">
