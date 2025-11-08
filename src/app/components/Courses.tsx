@@ -2,13 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-
-
 
 interface Course {
   id: string;
@@ -31,15 +30,6 @@ interface CourseResponse {
   hasPreviousPage: boolean;
 }
 
-interface Enrollment {
-  enrollment_id: string;
-  course_id: string;
-  course_title: string;
-  completed: boolean;
-  progress: any[];
-  total_modules: number;
-}
-
 // Skeleton Component
 const CourseSkeleton = () => (
   <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
@@ -59,15 +49,14 @@ const CourseSkeleton = () => (
 
 const Courses: React.FC = () => {
   const { ref, inView } = useInView();
-  const [token, setToken] = useState<string | null>(null);
-  const [myCourses, setMyCourses] = useState<Enrollment[]>([]);
+  const router = useRouter();
+  const { data: session } = useSession();
   const [filter, setFilter] = useState({
     category: '',
     level: '',
     language: ''
   });
 
-  const { data: session} = useSession();
   const {
     data,
     fetchNextPage,
@@ -95,41 +84,12 @@ const Courses: React.FC = () => {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  useEffect(() => {
-    setToken(localStorage.getItem('access_token'));
-    loadMyCourses();
-  }, []);
-
-  const loadMyCourses = () => {
-    const enrolledCourses = localStorage.getItem('enrolled_courses');
-    if (enrolledCourses) {
-      setMyCourses(JSON.parse(enrolledCourses));
+  const handleAccessCourse = () => {
+    if (session) {
+      router.push('/dashboard/courses');
+    } else {
+      router.push('/login');
     }
-  };
-
-  const handleEnroll = (courseId: string, courseTitle: string) => {
-    if (!session) {
-      alert('Please login to enroll in courses');
-      return;
-    }
-
-    const newEnrollment: Enrollment = {
-      enrollment_id: `enroll_${Date.now()}`,
-      course_id: courseId,
-      course_title: courseTitle,
-      completed: false,
-      progress: [],
-      total_modules: 3
-    };
-
-    const updatedEnrollments = [...myCourses, newEnrollment];
-    setMyCourses(updatedEnrollments);
-    localStorage.setItem('enrolled_courses', JSON.stringify(updatedEnrollments));
-    alert('Successfully enrolled in course!');
-  };
-
-  const isEnrolled = (courseId: string) => {
-    return myCourses.some(course => course.course_id === courseId);
   };
 
   const allCourses = data?.pages.flatMap(page => page.data) || [];
@@ -249,7 +209,7 @@ const Courses: React.FC = () => {
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>{course.moduleCount}</span>
+                        <span>{course.moduleCount} modules</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -259,41 +219,17 @@ const Courses: React.FC = () => {
                       </div>
                     </div>
 
-                    {isEnrolled(course.id) && (
-                      <div className="mb-3">
-                        <div className="flex items-center space-x-1 text-green-600 text-sm">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          <span className="font-medium">Enrolled</span>
-                        </div>
-                      </div>
-                    )}
-
                     <Button
-                      onClick={() => handleEnroll(course.id, course.title)}
-                      disabled={isEnrolled(course.id)}
-                      className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-200 ${
-                        isEnrolled(course.id)
-                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200'
-                          : 'bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg transform hover:scale-105'
-                      }`}
+                      onClick={() => router.push("/dashboard/courses")}
+                      className="w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-200 bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg transform hover:scale-105"
                     >
-                      {isEnrolled(course.id) ? (
                         <span className="flex items-center justify-center space-x-2">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
-                          <span>Continue Learning</span>
+                          <span>Access Dashboard</span>
                         </span>
-                      ) : (
-                        <span className="flex items-center justify-center space-x-2">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                          </svg>
-                          <span>Enroll Now</span>
-                        </span>
-                      )}
+                    
                     </Button>
                   </div>
                 </div>

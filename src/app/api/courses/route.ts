@@ -1,4 +1,3 @@
-
 import db from "@/server/db";
 import { course, courseModuleProgress, courseModules, courseProgress } from "@/server/db/schema";
 import { uploadVideo } from "@/utils/cloudinary";
@@ -11,105 +10,98 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const POST = async (req: NextRequest) => {
   try {
-      const userId = await getUserIdFromSession();
-      const isAdmin = await checkIfUserIsAdmin();
+    const userId = await getUserIdFromSession();
+    const isAdmin = await checkIfUserIsAdmin();
+    if (!isAdmin) {
+      return sendResponse(401, null, "Unauthorized");
+    }
 
-      if (!isAdmin) {
-          return sendResponse(401, null, "Unauthorized");
+    const formData = await req.formData();
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
+    const timeToComplete = formData.get("timeToComplete") as string;
+    const level = formData.get("level") as string;
+    const category = formData.get("category") as string;
+    const language = formData.get("language") as string;
+    const contentType = formData.get("contentType") as string;
+    const textContent = formData.get("textContent") as string | null;
+    const videoFile = formData.get("video") as File | null;
+    const isDownloadable = formData.get("isDownloadable") === "true";
+
+    const validationData = {
+      title,
+      description,
+      timeToComplete,
+      level,
+      category,
+      language,
+      contentType,
+      textContent: textContent || undefined,
+      isDownloadable
+    };
+
+    const validation = courseValidation.safeParse(validationData);
+    if (!validation.success) {
+      const errors = Object.fromEntries(
+        Object.entries(validation.error.flatten().fieldErrors).map(([k, v]) => [k, v ?? []])
+      );
+      return NextResponse.json(
+        { status: "Error!", errors, message: "Validation failed" },
+        { status: 400 }
+      );
+    }
+
+    let contentUrl: string | null = null;
+    if (contentType === "video") {
+      if (!videoFile) {
+        return sendResponse(400, null, "Video file is required when content type is video");
       }
 
-      const formData = await req.formData();
-      
-      const title = formData.get("title") as string;
-      const description = formData.get("description") as string;
-      const timeToComplete = formData.get("timeToComplete") as string;
-      const level = formData.get("level") as string;
-      const category = formData.get("category") as string;
-      const language = formData.get("language") as string;
-      const contentType = formData.get("contentType") as string;
-      const textContent = formData.get("textContent") as string | null;
-      const videoFile = formData.get("video") as File | null;
-      const isDownloadable = formData.get("isDownloadable") === "true";
-
-      const validationData = {
-          title,
-          description,
-          timeToComplete,
-          level,
-          category,
-          language,
-          contentType,
-          textContent: textContent || undefined,
-          isDownloadable
-      };
-
-      const validation = courseValidation.safeParse(validationData);
-      
-      if (!validation.success) {
-          const errors = Object.fromEntries(
-              Object.entries(validation.error.flatten().fieldErrors).map(([k, v]) => [k, v ?? []])
-          );
-          return NextResponse.json(
-              { status: "Error!", errors, message: "Validation failed" },
-              { status: 400 }
-          );
+      const validVideoTypes = ["video/mp4", "video/mpeg", "video/quicktime", "video/x-msvideo"];
+      if (!validVideoTypes.includes(videoFile.type)) {
+        return sendResponse(400, null, "Invalid video format. Supported formats: MP4, MPEG, MOV, AVI");
       }
 
-      let contentUrl: string | null = null;
-
-      if (contentType === "video") {
-          if (!videoFile) {
-              return sendResponse(400, null, "Video file is required when content type is video");
-          }
-
-          const validVideoTypes = ["video/mp4", "video/mpeg", "video/quicktime", "video/x-msvideo"];
-          if (!validVideoTypes.includes(videoFile.type)) {
-              return sendResponse(400, null, "Invalid video format. Supported formats: MP4, MPEG, MOV, AVI");
-          }
-
-          const maxSize = 100 * 1024 * 1024; 
-          if (videoFile.size > maxSize) {
-              return sendResponse(400, null, "Video file size must be less than 100MB");
-          }
-
-          try {
-              contentUrl = await uploadVideo(videoFile);
-          } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : "Video upload failed";
-              return sendResponse(500, null, errorMessage);
-          }
+      const maxSize = 100 * 1024 * 1024;
+      if (videoFile.size > maxSize) {
+        return sendResponse(400, null, "Video file size must be less than 100MB");
       }
 
-      const [newCourse] = await db.insert(course).values({
-          createdId: userId as string,
-          title: validation.data.title,
-          description: validation.data.description,
-          level: validation.data.level as any,
-          category: validation.data.category as any,
-          language: validation.data.language as any,
-          timeToComplete: validation.data.timeToComplete,
-          contentType: validation.data.contentType as any,
-          contentUrl: contentUrl,
-          textContent: validation.data.contentType === "text" ? validation.data.textContent : null,
-          isDownloadable: validation.data.isDownloadable,
-      }).returning();
+      try {
+        contentUrl = await uploadVideo(videoFile);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Video upload failed";
+        return sendResponse(500, null, errorMessage);
+      }
+    }
 
-      return sendResponse(200, newCourse, "Course created successfully");
+    const [newCourse] = await db.insert(course).values({
+      createdId: userId as string,
+      title: validation.data.title,
+      description: validation.data.description,
+      level: validation.data.level as any,
+      category: validation.data.category as any,
+      language: validation.data.language as any,
+      timeToComplete: validation.data.timeToComplete,
+      contentType: validation.data.contentType as any,
+      contentUrl: contentUrl,
+      textContent: validation.data.contentType === "text" ? validation.data.textContent : null,
+      isDownloadable: validation.data.isDownloadable,
+    }).returning();
 
+    return sendResponse(200, newCourse, "Course created successfully");
   } catch (error) {
-      console.error("Course creation error:", error);
-      const errorMessage = error instanceof Error ? error.message : "An error occurred";
-      return sendResponse(500, null, errorMessage);
+    console.error("Course creation error:", error);
+    const errorMessage = error instanceof Error ? error.message : "An error occurred";
+    return sendResponse(500, null, errorMessage);
   }
 };
 
-
 type CountResult = { count: number };
- 
+
 export const GET = async (req: NextRequest) => {
   try {
     const userId = await getUserIdFromSession();
-    
     if (!userId) {
       return sendResponse(401, null, "Unauthorized");
     }
@@ -121,7 +113,6 @@ export const GET = async (req: NextRequest) => {
     const totalResult = await db.execute<CountResult>(
       sql`SELECT COUNT(*)::int AS count FROM ${course}`
     );
-
     const totalCount = totalResult.rows[0]?.count ?? 0;
     const totalPages = Math.max(Math.ceil(totalCount / limit), 1);
 
@@ -130,6 +121,7 @@ export const GET = async (req: NextRequest) => {
       offset = 0;
     }
 
+    // Main query with LEFT JOIN to get course completion status
     const paginatedCourses = await db
       .select({
         id: course.id,
@@ -146,17 +138,36 @@ export const GET = async (req: NextRequest) => {
         isDownloadable: course.isDownloadable,
         createdAt: course.createdAt,
         updatedAt: course.updatedAt,
-        moduleCount: sql<number>`COUNT(${courseModules.id})::int`.as('module_count')
+        moduleCount: sql<number>`COUNT(DISTINCT ${courseModules.id})::int`.as('module_count'),
+        // LEFT JOIN to get completion status
+        isCompleted: sql<boolean>`COALESCE(${courseProgress.isCompleted}, false)`.as('is_completed'),
+        progressPercentage: sql<number>`COALESCE(${courseProgress.progressPercentage}, 0)`.as('progress_percentage'),
+        completedModules: sql<number>`COALESCE(${courseProgress.completedModules}, 0)`.as('completed_modules'),
+        totalModules: sql<number>`COALESCE(${courseProgress.totalModules}, 0)`.as('total_modules'),
       })
       .from(course)
       .leftJoin(courseModules, eq(course.id, courseModules.courseId))
-      .groupBy(course.id)
+      .leftJoin(
+        courseProgress,
+        and(
+          eq(courseProgress.courseId, course.id),
+          eq(courseProgress.userId, userId)
+        )
+      )
+      .groupBy(
+        course.id,
+        courseProgress.isCompleted,
+        courseProgress.progressPercentage,
+        courseProgress.completedModules,
+        courseProgress.totalModules
+      )
       .limit(limit)
       .offset(offset)
       .orderBy(desc(course.createdAt));
 
     const coursesWithModules = await Promise.all(
       paginatedCourses.map(async (courseItem) => {
+        // Get all modules for this course
         const allModules = await db
           .select({
             id: courseModules.id,
@@ -167,6 +178,7 @@ export const GET = async (req: NextRequest) => {
 
         const totalModules = allModules.length;
 
+        // Count completed modules
         const completedModulesResult = await db
           .select({ count: count() })
           .from(courseModuleProgress)
@@ -180,6 +192,7 @@ export const GET = async (req: NextRequest) => {
 
         const completedModulesCount = completedModulesResult[0]?.count || 0;
 
+        // Get modules with completion status
         const modules = await db
           .select({
             id: courseModules.id,
@@ -208,8 +221,10 @@ export const GET = async (req: NextRequest) => {
         const progressPercentage = totalModules > 0 
           ? Math.round((completedModulesCount / totalModules) * 100) 
           : 0;
+
         const isCourseCompleted = totalModules > 0 && completedModulesCount === totalModules;
 
+        // Update or create course progress
         const [existingProgress] = await db
           .select()
           .from(courseProgress)
@@ -273,7 +288,6 @@ export const GET = async (req: NextRequest) => {
       },
       coursesWithModules.length === 0 ? "No course found" : "Courses fetched successfully"
     );
-    
   } catch (error) {
     console.error("Course fetch error:", error);
     const errorMessage = error instanceof Error ? error.message : "An error occurred";

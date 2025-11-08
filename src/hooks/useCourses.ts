@@ -100,37 +100,15 @@ export const useEnrolledCourses = (userId: string) => {
       });
       return response.data;
     },
-    
-    onSuccess: (data, courseId) => {
-      queryClient.invalidateQueries({ queryKey: ["courses", courseId] });
-      queryClient.setQueryData(["enrollments", userId], (old: any) => {
-        if (!old) return { data: [] };
-        
-        const newEnrollment = {
-          courseId: courseId,
-          course_id: courseId,
-          completionPercentage: 0,
-          completion_percentage: 0,
-          completedModules: 0,
-          completed_modules: 0,
-          totalModules: 0,
-          total_modules: 0
-        };
-        
-        return {
-          ...old,
-          data: [...(old.data || []), newEnrollment]
-        };
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ["enrollments", userId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["enrolled-courses", userId] });
     },
-    
     onError: (error) => {
       console.error("Failed to join course", error);
     },
   });
-
+  
   return {
     enrollCourse: mutation.mutateAsync,
     isPending: mutation.isPending,

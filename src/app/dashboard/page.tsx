@@ -23,75 +23,76 @@ import {
   Activity,
   DollarSign,
   Target,
-  Users,
   PlayCircle,
 } from 'lucide-react';
 import Link from 'next/link';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
+import { useDashboardStats } from '@/hooks/useStats';
+
+const StatsCardSkeleton = () => (
+  <Card className="hover:shadow-lg transition-shadow border-l-4">
+    <CardHeader className="pb-3">
+      <div className="flex items-center justify-between">
+        <Skeleton width={100} height={16} />
+        <Skeleton circle width={32} height={32} />
+      </div>
+    </CardHeader>
+    <CardContent>
+      <Skeleton width={60} height={36} className="mb-2" />
+      <Skeleton width={120} height={12} />
+    </CardContent>
+  </Card>
+);
+
+const RecentCourseSkeleton = () => (
+  <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-gray-200">
+    <div className="flex items-start justify-between mb-3">
+      <div className="flex-1">
+        <Skeleton width={200} height={20} className="mb-2" />
+        <Skeleton width={150} height={16} />
+      </div>
+      <Skeleton width={90} height={36} />
+    </div>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Skeleton width={60} height={14} />
+        <Skeleton width={40} height={14} />
+      </div>
+      <Skeleton height={8} />
+    </div>
+  </div>
+);
+
+const RecentApplicationSkeleton = () => (
+  <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-200 rounded-lg bg-white">
+    <div className="flex-1 mb-3 md:mb-0">
+      <div className="flex items-center gap-2 mb-2">
+        <Skeleton width={200} height={20} />
+        <Skeleton width={80} height={20} />
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <Skeleton width={100} height={16} />
+        <Skeleton width={100} height={16} />
+      </div>
+    </div>
+    <Skeleton width={120} height={36} />
+  </div>
+);
+
+const RecentActivitySkeleton = () => (
+  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+    <Skeleton circle width={40} height={40} />
+    <div className="flex-1">
+      <Skeleton width={120} height={14} className="mb-1" />
+      <Skeleton width={150} height={12} />
+    </div>
+  </div>
+);
 
 const Dashboard: React.FC = () => {
   const { data: session } = useSession();
-
-  // Dummy data
-  const stats = {
-    totalCourses: 12,
-    completedCourses: 5,
-    inProgressCourses: 4,
-    totalApplications: 8,
-    pendingApplications: 2,
-    approvedApplications: 5,
-    rejectedApplications: 1,
-  };
-
-  const recentCourses = [
-    {
-      id: '1',
-      title: 'Modern Crop Production Techniques',
-      progress: 75,
-      category: 'Crop Production',
-      modules: 12,
-      completedModules: 9,
-    },
-    {
-      id: '2',
-      title: 'Sustainable Livestock Management',
-      progress: 45,
-      category: 'Livestock',
-      modules: 10,
-      completedModules: 4,
-    },
-    {
-      id: '3',
-      title: 'Organic Farming Basics',
-      progress: 90,
-      category: 'Sustainable Agriculture',
-      modules: 8,
-      completedModules: 7,
-    },
-  ];
-
-  const recentApplications = [
-    {
-      id: '1',
-      projectTitle: 'Community Irrigation Project',
-      status: 'approved',
-      budgetAmount: 50000,
-      submittedDate: '2 days ago',
-    },
-    {
-      id: '2',
-      projectTitle: 'Greenhouse Initiative',
-      status: 'pending',
-      budgetAmount: 35000,
-      submittedDate: '5 days ago',
-    },
-    {
-      id: '3',
-      projectTitle: 'Agricultural Training Center',
-      status: 'rejected',
-      budgetAmount: 80000,
-      submittedDate: '1 week ago',
-    },
-  ];
+  const { data: dashboardData, isLoading, isError } = useDashboardStats();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -111,10 +112,45 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'course_completed':
+        return {
+          icon: <CheckCircle className="w-5 h-5 text-green-600" />,
+          bgColor: 'bg-green-50',
+          iconBg: 'bg-green-100'
+        };
+      case 'new_enrollment':
+        return {
+          icon: <BookOpen className="w-5 h-5 text-blue-600" />,
+          bgColor: 'bg-blue-50',
+          iconBg: 'bg-blue-100'
+        };
+      case 'application_submitted':
+        return {
+          icon: <FileText className="w-5 h-5 text-purple-600" />,
+          bgColor: 'bg-purple-50',
+          iconBg: 'bg-purple-100'
+        };
+      default:
+        return {
+          icon: <Activity className="w-5 h-5 text-gray-600" />,
+          bgColor: 'bg-gray-50',
+          iconBg: 'bg-gray-100'
+        };
+    }
+  };
+
+  const stats = dashboardData?.stats;
+  const recentCourses = dashboardData?.recentCourses || [];
+  const recentApplications = dashboardData?.recentApplications || [];
+  const recentActivity = dashboardData?.recentActivity || [];
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         
+        {/* Header */}
         <div className="bg-slate-700 rounded-2xl p-6 md:p-8 text-white shadow-xl">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -126,7 +162,7 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/courses">
+              <Link href="/dashboard/courses">
                 <Button className="bg-white text-green-700 hover:bg-green-50">
                   <BookOpen className="w-4 h-4 mr-2" />
                   Browse Courses
@@ -144,77 +180,92 @@ const Dashboard: React.FC = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {/* Total Courses */}
-          <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Total Courses
-                </CardTitle>
-                <BookOpen className="w-8 h-8 text-blue-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{stats.totalCourses}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {stats.inProgressCourses} in progress
-              </p>
-            </CardContent>
-          </Card>
+          {isLoading ? (
+            <>
+              <StatsCardSkeleton />
+              <StatsCardSkeleton />
+              <StatsCardSkeleton />
+              <StatsCardSkeleton />
+            </>
+          ) : isError ? (
+            <div className="col-span-full text-center py-8">
+              <p className="text-red-600 font-semibold">Failed to load stats</p>
+            </div>
+          ) : (
+            <>
+              {/* Total Courses */}
+              <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-600">
+                      Total Courses
+                    </CardTitle>
+                    <BookOpen className="w-8 h-8 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats?.totalCourses || 0}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stats?.inProgressCourses || 0} in progress
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Completed Courses */}
-          <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-green-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Completed
-                </CardTitle>
-                <CheckCircle className="w-8 h-8 text-green-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{stats.completedCourses}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {Math.round((stats.completedCourses / stats.totalCourses) * 100)}% completion rate
-              </p>
-            </CardContent>
-          </Card>
+              {/* Completed Courses */}
+              <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-green-500">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-600">
+                      Completed
+                    </CardTitle>
+                    <CheckCircle className="w-8 h-8 text-green-500" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats?.completedCourses || 0}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stats?.totalCourses ? Math.round(((stats?.completedCourses || 0) / stats.totalCourses) * 100) : 0}% completion rate
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Total Applications */}
-          <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-purple-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Applications
-                </CardTitle>
-                <FileText className="w-8 h-8 text-purple-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{stats.totalApplications}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {stats.pendingApplications} pending review
-              </p>
-            </CardContent>
-          </Card>
+              {/* Total Applications */}
+              <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-purple-500">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-600">
+                      Applications
+                    </CardTitle>
+                    <FileText className="w-8 h-8 text-purple-500" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats?.totalApplications || 0}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stats?.pendingApplications || 0} pending review
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Approved Applications */}
-          <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-yellow-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Approved
-                </CardTitle>
-                <Award className="w-8 h-8 text-yellow-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{stats.approvedApplications}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {Math.round((stats.approvedApplications / stats.totalApplications) * 100)}% success rate
-              </p>
-            </CardContent>
-          </Card>
+              {/* Approved Applications */}
+              <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-yellow-500">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-600">
+                      Approved
+                    </CardTitle>
+                    <Award className="w-8 h-8 text-yellow-500" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats?.approvedApplications || 0}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stats?.totalApplications ? Math.round(((stats?.approvedApplications || 0) / stats.totalApplications) * 100) : 0}% success rate
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* Main Content Grid */}
@@ -232,7 +283,7 @@ const Dashboard: React.FC = () => {
                     </CardTitle>
                     <CardDescription>Your active courses</CardDescription>
                   </div>
-                  <Link href="/my-courses">
+                  <Link href="/dashboard/my-courses">
                     <Button variant="ghost" size="sm">
                       View All
                       <ArrowRight className="w-4 h-4 ml-2" />
@@ -241,44 +292,62 @@ const Dashboard: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recentCourses.map((course) => (
-                  <div
-                    key={course.id}
-                    className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg hover:shadow-md transition-all border border-gray-200"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900 mb-1">{course.title}</h4>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Badge variant="outline" className="text-xs">
-                            {course.category}
-                          </Badge>
-                          <span className="text-xs">
-                            {course.completedModules}/{course.modules} modules
-                          </span>
-                        </div>
-                      </div>
-                      <Link href={`/courses/${course.id}`}>
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                          <PlayCircle className="w-4 h-4 mr-1" />
-                          Continue
-                        </Button>
-                      </Link>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Progress</span>
-                        <span className="font-semibold text-green-600">{course.progress}%</span>
-                      </div>
-                      <Progress value={course.progress} className="h-2" />
-                    </div>
+                {isLoading ? (
+                  <>
+                    <RecentCourseSkeleton />
+                    <RecentCourseSkeleton />
+                    <RecentCourseSkeleton />
+                  </>
+                ) : recentCourses.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>No courses in progress</p>
+                    <Link href="/dashboard/courses">
+                      <Button className="mt-4 bg-green-600 hover:bg-green-700">
+                        Browse Courses
+                      </Button>
+                    </Link>
                   </div>
-                ))}
+                ) : (
+                  recentCourses.map((course) => (
+                    <div
+                      key={course.id}
+                      className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg hover:shadow-md transition-all border border-gray-200"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-1">{course.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Badge variant="outline" className="text-xs">
+                              {course.category}
+                            </Badge>
+                            <span className="text-xs">
+                              {course.completedModules}/{course.modules} modules
+                            </span>
+                          </div>
+                        </div>
+                        <Link href={`/dashboard/courses/${course.id}/modules`}>
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                            <PlayCircle className="w-4 h-4 mr-1" />
+                            Continue
+                          </Button>
+                        </Link>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Progress</span>
+                          <span className="font-semibold text-green-600">{course.progress}%</span>
+                        </div>
+                        <Progress value={course.progress} className="h-2" />
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Quick Actions & Recent Applications */}
+          {/* Quick Actions & Recent Activity */}
           <div className="space-y-6">
             
             {/* Quick Actions */}
@@ -290,13 +359,13 @@ const Dashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Link href="/courses">
+                <Link href="/dashboard/courses">
                   <Button variant="outline" className="w-full justify-start hover:bg-green-50">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Explore Courses
                   </Button>
                 </Link>
-                <Link href="/my-courses">
+                <Link href="/dashboard/my-courses">
                   <Button variant="outline" className="w-full justify-start hover:bg-blue-50">
                     <Activity className="w-4 h-4 mr-2" />
                     My Learning
@@ -326,35 +395,32 @@ const Dashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
+                {isLoading ? (
+                  <>
+                    <RecentActivitySkeleton />
+                    <RecentActivitySkeleton />
+                    <RecentActivitySkeleton />
+                  </>
+                ) : recentActivity.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    No recent activity
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">Course Completed</p>
-                    <p className="text-xs text-gray-600">Organic Farming Basics</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">New Enrollment</p>
-                    <p className="text-xs text-gray-600">Sustainable Livestock</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">Application Submitted</p>
-                    <p className="text-xs text-gray-600">Irrigation Project</p>
-                  </div>
-                </div>
+                ) : (
+                  recentActivity.map((activity, index) => {
+                    const { icon, bgColor, iconBg } = getActivityIcon(activity.type);
+                    return (
+                      <div key={index} className={`flex items-center gap-3 p-3 ${bgColor} rounded-lg`}>
+                        <div className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center`}>
+                          {icon}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                          <p className="text-xs text-gray-600">{activity.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           </div>
@@ -381,35 +447,53 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentApplications.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all bg-white"
-                >
-                  <div className="flex-1 mb-3 md:mb-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-semibold text-gray-900">{app.projectTitle}</h4>
-                      {getStatusBadge(app.status)}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4" />
-                        ${app.budgetAmount.toLocaleString()}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {app.submittedDate}
-                      </span>
-                    </div>
-                  </div>
-                  <Link href={`/dashboard/my-applications`}>
-                    <Button variant="outline" size="sm">
-                      View Details
-                      <ArrowRight className="w-4 h-4 ml-2" />
+              {isLoading ? (
+                <>
+                  <RecentApplicationSkeleton />
+                  <RecentApplicationSkeleton />
+                  <RecentApplicationSkeleton />
+                </>
+              ) : recentApplications.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>No applications yet</p>
+                  <Link href="/apply-donation">
+                    <Button className="mt-4 bg-green-600 hover:bg-green-700">
+                      Submit Application
                     </Button>
                   </Link>
                 </div>
-              ))}
+              ) : (
+                recentApplications.map((app) => (
+                  <div
+                    key={app.id}
+                    className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all bg-white"
+                  >
+                    <div className="flex-1 mb-3 md:mb-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-gray-900">{app.projectTitle}</h4>
+                        {getStatusBadge(app.status)}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="w-4 h-4" />
+                          ${app.budgetAmount.toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {app.submittedDate}
+                        </span>
+                      </div>
+                    </div>
+                    <Link href={`/dashboard/my-applications`}>
+                      <Button variant="outline" size="sm">
+                        View Details
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </Link>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
