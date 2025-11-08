@@ -1,9 +1,9 @@
 import db from "@/server/db";
-import { course, courseModuleProgress, courseModules } from "@/server/db/schema";
+import { course, courseModuleProgress, courseModules, courseProgress } from "@/server/db/schema";
 import { uploadVideo } from "@/utils/cloudinary";
 import { checkIfUserIsAdmin, getUserIdFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 export const GET = async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
@@ -15,7 +15,6 @@ export const GET = async (request: NextRequest, { params }: { params: Promise<{ 
         return sendResponse(401, null, "Unauthorized");
       }
 
-      // Get course data with module count
       const [courseData] = await db
         .select({
           id: course.id,
@@ -30,21 +29,39 @@ export const GET = async (request: NextRequest, { params }: { params: Promise<{ 
           contentUrl: course.contentUrl,
           textContent: course.textContent,
           isDownloadable: course.isDownloadable,
-          isCourseCompleted: course.isCourseCompleted,
           createdAt: course.createdAt,
           updatedAt: course.updatedAt,
-          moduleCount: sql<number>`COUNT(${courseModules.id})::int`.as('module_count')
+          moduleCount: sql<number>`COUNT(DISTINCT ${courseModules.id})::int`.as('module_count'),
+          // Get user's progress from courseProgress table
+          isCourseCompleted: sql<boolean>`COALESCE(${courseProgress.isCompleted}, false)`.as('is_course_completed'),
+          completedModules: sql<number>`COALESCE(${courseProgress.completedModules}, 0)`.as('completed_modules'),
+          totalModules: sql<number>`COALESCE(${courseProgress.totalModules}, 0)`.as('total_modules'),
+          progressPercentage: sql<number>`COALESCE(${courseProgress.progressPercentage}, 0)`.as('progress_percentage'),
+          completedAt: courseProgress.completedAt,
         })
         .from(course)
         .leftJoin(courseModules, eq(course.id, courseModules.courseId))
+        .leftJoin(
+          courseProgress,
+          and(
+            eq(course.id, courseProgress.courseId),
+            eq(courseProgress.userId, userId)
+          )
+        )
         .where(eq(course.id, id))
-        .groupBy(course.id);
+        .groupBy(
+          course.id,
+          courseProgress.isCompleted,
+          courseProgress.completedModules,
+          courseProgress.totalModules,
+          courseProgress.progressPercentage,
+          courseProgress.completedAt
+        );
 
       if (!courseData) {
         return sendResponse(404, null, "Course not found");
       }
 
-      // Get modules with their completion status for the current user
       const modules = await db
         .select({
           id: courseModules.id,
@@ -55,6 +72,7 @@ export const GET = async (request: NextRequest, { params }: { params: Promise<{ 
           contentUrl: courseModules.contentUrl,
           durationTime: courseModules.durationTime,
           isCompleted: sql<boolean>`COALESCE(${courseModuleProgress.isCompleted}, false)`.as('is_completed'),
+          completedAt: courseModuleProgress.completedAt,
           createdAt: courseModules.createdAt,
           updatedAt: courseModules.updatedAt,
         })
@@ -71,7 +89,14 @@ export const GET = async (request: NextRequest, { params }: { params: Promise<{ 
 
       const response = {
         ...courseData,
-        modules
+        modules,
+        progress: {
+          completedModules: courseData.completedModules,
+          totalModules: courseData.totalModules,
+          progressPercentage: courseData.progressPercentage,
+          isCompleted: courseData.isCourseCompleted,
+          completedAt: courseData.completedAt,
+        }
       };
 
       console.log("Course with modules:", response);
@@ -115,7 +140,6 @@ export const PATCH = async (
     const videoFile = formData.get("video") as File | null;
     const isDownloadable = formData.get("isDownloadable") === "true";
 
-    // Check if course exists and belongs to user
     const [existingCourse] = await db
       .select()
       .from(course)
@@ -166,7 +190,6 @@ export const PATCH = async (
   }
 };
 
-// DELETE - Delete Course
 export const DELETE = async (
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -185,7 +208,6 @@ export const DELETE = async (
       return sendResponse(401, null, "Unauthorized");
     }
 
-    // Check if course exists and belongs to user
     const [existingCourse] = await db
       .select()
       .from(course)
@@ -208,4 +230,3 @@ export const DELETE = async (
     return sendResponse(500, null, errorMessage);
   }
 };
-

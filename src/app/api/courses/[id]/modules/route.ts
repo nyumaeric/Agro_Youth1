@@ -1,61 +1,12 @@
 import db from "@/server/db";
-import { certificates, course, courseModuleProgress, courseModules, courseProgress, users } from "@/server/db/schema";
+import { course, courseModuleProgress, courseModules, courseProgress, users } from "@/server/db/schema";
 import { uploadVideo } from "@/utils/cloudinary";
 import { checkIfUserIsAdmin, getUserIdFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
 import { courseModuleValidation } from "@/validator/courseModule";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-
-
-export async function updateCourseProgress(courseId: string, userId: string) {
-  try {
-    const allModules = await db
-      .select()
-      .from(courseModules)
-      .where(eq(courseModules.courseId, courseId));
-
-    const completedCount = allModules.filter(module => module.isCompleted).length;
-    const totalModules = allModules.length;
-
-    const progressPercentage = totalModules > 0 
-      ? Math.round((completedCount / totalModules) * 100) 
-      : 0;
-
-    const [existingProgress] = await db
-      .select()
-      .from(courseProgress)
-      .where(
-        and(
-          eq(courseProgress.courseId, courseId),
-          eq(courseProgress.userId, userId)
-        )
-      );
-
-    if (existingProgress) {
-      await db
-        .update(courseProgress)
-        .set({
-          completedModules: completedCount,
-          progressPercentage,
-          updatedAt: new Date(),
-        })
-        .where(eq(courseProgress.id, existingProgress.id));
-    } else {
-      await db.insert(courseProgress).values({
-        userId,
-        courseId,
-        completedModules: completedCount,
-        progressPercentage,
-      });
-    }
-
-    return { completedCount, totalModules, progressPercentage };
-  } catch (error) {
-    throw error;
-  }
-}
 
 export const POST = async (req: NextRequest, {params}: {params: Promise<{id: string}>}) => {
   try {
@@ -76,23 +27,19 @@ export const POST = async (req: NextRequest, {params}: {params: Promise<{id: str
 
      const formData = await req.formData();
 
-     // Extract form fields
      const title = formData.get("title") as string;
      const description = formData.get("description") as string;
      const durationTime = formData.get("durationTime") as string;
      const contentType = formData.get("contentType") as string;
      const textContent = formData.get("textContent") as string | null;
      const videoFile = formData.get("video") as File | null;
-     const isCompleted = formData.get("isCompleted") === "true";
 
-     // Validate basic fields
      const validationData = {
       title,
       description,
       durationTime,
       contentType,
       textContent: textContent || undefined,
-      isCompleted
      };
 
      const validation = courseModuleValidation.safeParse(validationData);
@@ -109,25 +56,21 @@ export const POST = async (req: NextRequest, {params}: {params: Promise<{id: str
 
      let contentUrl: string | null = null;
 
-     // Handle video upload
      if (contentType === "video") {
          if (!videoFile) {
              return sendResponse(400, null, "Video file is required when content type is video");
          }
 
-         // Validate video file
          const validVideoTypes = ["video/mp4", "video/mpeg", "video/quicktime", "video/x-msvideo"];
          if (!validVideoTypes.includes(videoFile.type)) {
              return sendResponse(400, null, "Invalid video format. Supported formats: MP4, MPEG, MOV, AVI");
          }
 
-         // Check file size (max 100MB)
-         const maxSize = 100 * 1024 * 1024; // 100MB
+         const maxSize = 100 * 1024 * 1024; 
          if (videoFile.size > maxSize) {
              return sendResponse(400, null, "Video file size must be less than 100MB");
          }
 
-         // Upload to Cloudinary
          try {
              contentUrl = await uploadVideo(videoFile);
          } catch (error) {
@@ -144,10 +87,60 @@ export const POST = async (req: NextRequest, {params}: {params: Promise<{id: str
        contentType: validation.data.contentType as any,
        contentUrl: contentUrl,
        textContent: validation.data.contentType === "text" ? validation.data.textContent : null,
-       isCompleted: validation.data.isCompleted,
      }).returning();
 
-     await updateCourseProgress(id, userId);
+     const [totalModulesResult] = await db
+       .select({ count: count() })
+       .from(courseModules)
+       .where(eq(courseModules.courseId, id));
+
+     const totalModules = totalModulesResult?.count || 0;
+
+     const [completedModulesResult] = await db
+       .select({ count: count() })
+       .from(courseModuleProgress)
+       .where(
+         and(
+           eq(courseModuleProgress.userId, userId),
+           eq(courseModuleProgress.courseId, id),
+           eq(courseModuleProgress.isCompleted, true)
+         )
+       );
+
+     const completedModules = completedModulesResult?.count || 0;
+     const progressPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+
+     const [existingProgress] = await db
+       .select()
+       .from(courseProgress)
+       .where(
+         and(
+           eq(courseProgress.userId, userId),
+           eq(courseProgress.courseId, id)
+         )
+       )
+       .limit(1);
+
+     if (existingProgress) {
+       await db
+         .update(courseProgress)
+         .set({
+           totalModules,
+           completedModules,
+           progressPercentage,
+           updatedAt: new Date(),
+         })
+         .where(eq(courseProgress.id, existingProgress.id));
+     } else {
+       await db.insert(courseProgress).values({
+         userId,
+         courseId: id,
+         totalModules,
+         completedModules,
+         progressPercentage,
+         isCompleted: false,
+       });
+     }
 
      return sendResponse(200, newModule, "Module created successfully");
 
@@ -157,36 +150,6 @@ export const POST = async (req: NextRequest, {params}: {params: Promise<{id: str
     return sendResponse(500, null, errorMessage);
   }
 };
-
-// export const GET = async (
-//   req: NextRequest,
-//   { params }: { params: Promise<{ id: string }> }
-// ) => {
-//   try {
-//     const { id } = await params;
-
-//     if (!id) {
-//       return sendResponse(400, null, "Course ID is required");
-//     }
-
-//     const courseModule = await db
-//       .select()
-//       .from(courseModules)
-//       .where(eq(courseModules.courseId, id))
-//       .orderBy(desc(courseModules.createdAt));
-
-//     if (!courseModule || courseModule.length === 0) {
-//       return sendResponse(404, [], "No modules found for this course");
-//     }
-
-//     return sendResponse(200, courseModule, "Modules retrieved successfully");
-//   } catch (error) {
-//     const errorMessage =
-//       error instanceof Error ? error.message : "An error occurred";
-//     return sendResponse(500, null, errorMessage);
-//   }
-// };
-
 
 export const GET = async (
   req: NextRequest,
@@ -200,7 +163,6 @@ export const GET = async (
       return sendResponse(401, null, "Unauthorized");
     }
 
-    // Get the course details
     const [courseData] = await db
       .select()
       .from(course)
@@ -211,14 +173,12 @@ export const GET = async (
       return sendResponse(404, null, "Course not found");
     }
 
-    // Get all modules for this course
     const modules = await db
       .select()
       .from(courseModules)
       .where(eq(courseModules.courseId, courseId))
       .orderBy(courseModules.createdAt);
 
-    // Get user's progress for all modules in this course
     const userProgress = await db
       .select()
       .from(courseModuleProgress)
@@ -229,7 +189,6 @@ export const GET = async (
         )
       );
 
-    // Create a map of module progress
     const progressMap = new Map(
       userProgress.map((p) => [
         p.moduleId,
@@ -240,7 +199,6 @@ export const GET = async (
       ])
     );
 
-    // Combine modules with user's progress
     const modulesWithProgress = modules.map((module) => {
       const progress = progressMap.get(module.id);
       return {
@@ -250,7 +208,6 @@ export const GET = async (
       };
     });
 
-    // Get overall course progress
     const [overallProgress] = await db
       .select()
       .from(courseProgress)
@@ -271,7 +228,6 @@ export const GET = async (
         progressPercentage: 0,
         isCompleted: false,
       },
-      // Add this for certificate claiming logic
       isCourseCompleted: overallProgress?.isCompleted || false,
       moduleCount: modules.length,
     };
@@ -284,98 +240,3 @@ export const GET = async (
     return sendResponse(500, null, errorMessage);
   }
 };
-
-
-// export const GET = async (
-//   req: NextRequest,
-//   { params }: { params: Promise<{ id: string }> }
-// ) => {
-//   try {
-//     const { id: courseId } = await params;
-//     const userId = await getUserIdFromSession();
-
-//     if (!userId) {
-//       return sendResponse(401, null, "Unauthorized");
-//     }
-
-//     // Get the course details
-//     const [courseData] = await db
-//       .select()
-//       .from(course)
-//       .where(eq(course.id, courseId))
-//       .limit(1);
-
-//     if (!courseData) {
-//       return sendResponse(404, null, "Course not found");
-//     }
-
-//     // Get all modules for this course
-//     const modules = await db
-//       .select()
-//       .from(courseModules)
-//       .where(eq(courseModules.courseId, courseId))
-//       .orderBy(courseModules.createdAt);
-
-//     // Get user's progress for all modules in this course
-//     const userProgress = await db
-//       .select()
-//       .from(courseModuleProgress)
-//       .where(
-//         and(
-//           eq(courseModuleProgress.courseId, courseId),
-//           eq(courseModuleProgress.userId, userId)
-//         )
-//       );
-
-//     // Create a map of module progress
-//     const progressMap = new Map(
-//       userProgress.map((p) => [
-//         p.moduleId,
-//         {
-//           isCompleted: p.isCompleted,
-//           completedAt: p.completedAt,
-//         },
-//       ])
-//     );
-
-//     // Combine modules with user's progress
-//     const modulesWithProgress = modules.map((module) => {
-//       const progress = progressMap.get(module.id);
-//       return {
-//         ...module,
-//         isCompleted: progress?.isCompleted || false,
-//         completedAt: progress?.completedAt || null,
-//       };
-//     });
-
-//     // Get overall course progress
-//     const [overallProgress] = await db
-//       .select()
-//       .from(courseProgress)
-//       .where(
-//         and(
-//           eq(courseProgress.courseId, courseId),
-//           eq(courseProgress.userId, userId)
-//         )
-//       )
-//       .limit(1);
-
-//     const responseData = {
-//       ...courseData,
-//       modules: modulesWithProgress,
-//       progress: overallProgress || {
-//         completedModules: 0,
-//         totalModules: modules.length,
-//         progressPercentage: 0,
-//         isCompleted: false,
-//       },
-//     };
-
-//     return sendResponse(200, responseData, "Course modules fetched successfully");
-//   } catch (error) {
-//     console.error("Error fetching course modules:", error);
-//     const errorMessage =
-//       error instanceof Error ? error.message : "An error occurred";
-//     return sendResponse(500, null, errorMessage);
-//   }
-// };

@@ -68,33 +68,36 @@ export const ContentTypeEnum = pgEnum("content_type", [
 
 export const ContentTypeEnumCourse = pgEnum("content_type", ["text", "video"]);
 
+
+
 export const course = pgTable("courses", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    createdId: uuid("created_id").references(() => users.id).notNull(),
-    title: text("title").notNull(),
-    description: text("description").notNull(),
-    timeToComplete: text("time_to_complete").notNull(),
-    level: level("level").notNull(),
-    category: courseCategory("category").notNull(),
-    language: language("language").notNull(),
-    contentType: ContentTypeEnumCourse("content_type").notNull(),
-    contentUrl: text("content_url"),
-    textContent: text("text_content"), 
-    isDownloadable: boolean("is_downloadable").default(false),
-    isCourseCompleted: boolean("is_completed").notNull().default(false),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdId: uuid("created_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  timeToComplete: text("time_to_complete").notNull(),
+  level: level("level").notNull(),
+  category: courseCategory("category").notNull(),
+  language: language("language").notNull(),
+  contentType: ContentTypeEnumCourse("content_type").notNull(),
+  contentUrl: text("content_url"),
+  textContent: text("text_content"),
+  isDownloadable: boolean("is_downloadable").default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
 export const courseModules = pgTable("course_modules", {
   id: uuid("id").primaryKey().defaultRandom(),
-  courseId: uuid("course_id").references(() => course.id, { onDelete: 'cascade' }).notNull(),
+  courseId: uuid("course_id")
+    .references(() => course.id, { onDelete: "cascade" })
+    .notNull(),
   title: text("title").notNull(),
   description: text("description").notNull(),
   durationTime: text("duration_time").notNull(),
   contentType: ContentTypeEnumCourse("content_type").notNull(),
   contentUrl: text("content_url"),
   textContent: text("text_content"),
-  isCompleted: boolean("is_completed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -175,7 +178,7 @@ export const Comment = pgTable("comments", {
     updatedAt: timestamp("updated_at").defaultNow(),
   });
  
-export const courseProgress = pgTable("course_progress", {
+  export const courseProgress = pgTable("course_progress", {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
       .references(() => users.id, { onDelete: "cascade" })
@@ -190,24 +193,24 @@ export const courseProgress = pgTable("course_progress", {
     completedAt: timestamp("completed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-export const courseModuleProgress = pgTable("course_module_progress", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  courseId: uuid("course_id")
-    .references(() => course.id, { onDelete: "cascade" })
-    .notNull(),
-  moduleId: uuid("module_id")
-    .references(() => courseModules.id, { onDelete: "cascade" })
-    .notNull(),
-  isCompleted: boolean("is_completed").notNull().default(false),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+  });
+  
+  export const courseModuleProgress = pgTable("course_module_progress", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    courseId: uuid("course_id")
+      .references(() => course.id, { onDelete: "cascade" })
+      .notNull(),
+    moduleId: uuid("module_id")
+      .references(() => courseModules.id, { onDelete: "cascade" })
+      .notNull(),
+    isCompleted: boolean("is_completed").notNull().default(false),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  });
 export const CommentLikes = pgTable("CommentLikes", {
     id: uuid("id").primaryKey().defaultRandom(),
     comment_id: uuid("comment_id")

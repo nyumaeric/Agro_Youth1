@@ -1,7 +1,6 @@
 'use client';
 
 import { getAdminCourse, getCertificate, getSingleCourse, getSingleCourseModule, postCertificate } from '@/services/getCourse';
-import showToast from '@/utils/showToast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 
@@ -16,7 +15,7 @@ export interface Module {
 }
 
 export interface Course {
-  [x: string]: { completedModules: number; totalModules: number; progressPercentage: number; isCompleted: boolean; };
+  progress: { completedModules: number; totalModules: number; progressPercentage: number; isCompleted: boolean; };
   id: string;
   createdId: string;
   title: string;
@@ -175,13 +174,53 @@ export const useCertificate = (courseId: string) => {
 
 export const useClaimCertificate = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (courseId: string) => claimCertificate(courseId),
+    mutationFn: async (courseId: string) => {
+      const response = await fetch(`/api/courses/${courseId}/certificate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to claim certificate");
+      }
+
+      return response.json();
+    },
+    onMutate: async (courseId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["certificate", courseId] });
+
+      // Snapshot previous value
+      const previousCertificate = queryClient.getQueryData(["certificate", courseId]);
+
+      // Optimistically update to show certificate is being claimed
+      queryClient.setQueryData(["certificate", courseId], (old: any) => ({
+        ...old,
+        status: "success",
+        data: {
+          ...old?.data,
+          canClaim: false,
+          isClaiming: true, 
+        },
+      }));
+
+      return { previousCertificate };
+    },
     onSuccess: (data, courseId) => {
-      // Invalidate and refetch certificate data
+      queryClient.setQueryData(["certificate", courseId], data);
+      
       queryClient.invalidateQueries({ queryKey: ["certificate", courseId] });
       queryClient.invalidateQueries({ queryKey: ["course", courseId] });
+    },
+    onError: (err, courseId, context) => {
+      if (context?.previousCertificate) {
+        queryClient.setQueryData(["certificate", courseId], context.previousCertificate);
+      }
     },
   });
 };
