@@ -271,11 +271,12 @@ const Courses: React.FC = () => {
                 return (
                   <Card 
                     key={course.id} 
-                    className={`group hover:shadow-2xl transition-all duration-300 border-2 overflow-hidden p-0 relative ${
-                      course.isCourseCompleted 
-                        ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 hover:border-green-400' 
-                        : 'bg-white border-gray-200 hover:border-gray-300'
-                    }`}
+                    className="group hover:shadow-2xl transition-all duration-300 border-2 overflow-hidden p-0 relative" 
+                    // ${
+                    //   course.isCourseCompleted 
+                    //     ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 hover:border-green-400' 
+                    //     : 'bg-white border-gray-200 hover:border-gray-300'
+                    // }`}
                   >
                     {/* Completed Course Design */}
                     {course.isCourseCompleted ? (
