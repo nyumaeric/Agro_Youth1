@@ -94,13 +94,6 @@ const Dashboard: React.FC = () => {
   const { data: session } = useSession();
   const { data: dashboardData, isLoading, isError } = useDashboardStats();
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
@@ -155,7 +148,7 @@ const Dashboard: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-4xl font-bold mb-2">
-                {getGreeting()}, {session?.user?.fullName || 'Farmer'}! 👋
+                Welcome, {session?.user?.fullName || 'Farmer'}! 👋
               </h1>
               <p className="text-green-100 text-sm md:text-base">
                 Welcome back to your agricultural learning dashboard
@@ -163,15 +156,9 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/dashboard/courses">
-                <Button className="bg-white text-green-700 hover:bg-green-50">
+                <Button className="bg-white text-gray-700 hover:bg-green-50 cursor-pointer">
                   <BookOpen className="w-4 h-4 mr-2" />
                   Browse Courses
-                </Button>
-              </Link>
-              <Link href="/apply-donation">
-                <Button variant="outline" className="border-white text-white hover:bg-green-600">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Apply for Funding
                 </Button>
               </Link>
             </div>
@@ -365,19 +352,19 @@ const Dashboard: React.FC = () => {
                     Explore Courses
                   </Button>
                 </Link>
-                <Link href="/dashboard/my-courses">
+                <Link href="/dashboard/courses/enrolled">
                   <Button variant="outline" className="w-full justify-start hover:bg-blue-50">
                     <Activity className="w-4 h-4 mr-2" />
                     My Learning
                   </Button>
                 </Link>
-                <Link href="/apply-donation">
+                <Link href="/dashboard/apply">
                   <Button variant="outline" className="w-full justify-start hover:bg-purple-50">
                     <FileText className="w-4 h-4 mr-2" />
                     New Application
                   </Button>
                 </Link>
-                <Link href="/dashboard/my-applications">
+                <Link href="/dashboard/allapplications">
                   <Button variant="outline" className="w-full justify-start hover:bg-yellow-50">
                     <Award className="w-4 h-4 mr-2" />
                     My Applications
@@ -386,7 +373,6 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Recent Activity */}
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="text-xl flex items-center gap-2">
@@ -457,7 +443,7 @@ const Dashboard: React.FC = () => {
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                   <p>No applications yet</p>
-                  <Link href="/apply-donation">
+                  <Link href="/dashboard/apply">
                     <Button className="mt-4 bg-green-600 hover:bg-green-700">
                       Submit Application
                     </Button>

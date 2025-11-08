@@ -74,19 +74,9 @@ export const adminMenuItems: NavItem[] = [
     icon: createIcon(Group)
   },
   {
-    title: "Users",
+    title: "All Users",
     href: "/dashboard/users",
     icon: createIcon(Users),
-    items: [
-      {
-        title: "All Users",
-        href: "/dashboard/users"
-      },
-      {
-        title: "roles",
-        href: "/dashboard/roles"
-      }
-    ]
   },
   {
     title: "Profile",
