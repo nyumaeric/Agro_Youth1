@@ -196,7 +196,6 @@ export const GET = async (req: NextRequest, { params }: { params: Promise<{ id: 
       return sendResponse(401, null, "Unauthorized");
     }
 
-    // Create aliases for the users table
     const certificateUser = users;
     const courseInstructor = users;
 

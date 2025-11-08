@@ -124,7 +124,6 @@ export const product = pgTable("products", {
     unit: varchar("unit").notNull(),
     price: integer("price").notNull(),
     userId: uuid("userId").references(() => users.id).notNull(),
-    
     description: text("description").notNull(),
     isAvailable: boolean("isAvailable").notNull().default(true),
 });
@@ -179,15 +178,35 @@ export const Comment = pgTable("comments", {
 export const courseProgress = pgTable("course_progress", {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
-        .references(() => users.id, { onDelete: "cascade" })
-        .notNull(),
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
     courseId: uuid("course_id")
-        .references(() => course.id, { onDelete: "cascade" })
-        .notNull(),
+      .references(() => course.id, { onDelete: "cascade" })
+      .notNull(),
     completedModules: integer("completed_modules").notNull().default(0),
+    totalModules: integer("total_modules").notNull().default(0),
     progressPercentage: integer("progress_percentage").notNull().default(0),
+    isCompleted: boolean("is_completed").notNull().default(false),
+    completedAt: timestamp("completed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const courseModuleProgress = pgTable("course_module_progress", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  courseId: uuid("course_id")
+    .references(() => course.id, { onDelete: "cascade" })
+    .notNull(),
+  moduleId: uuid("module_id")
+    .references(() => courseModules.id, { onDelete: "cascade" })
+    .notNull(),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 export const CommentLikes = pgTable("CommentLikes", {
     id: uuid("id").primaryKey().defaultRandom(),

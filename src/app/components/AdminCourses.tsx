@@ -138,13 +138,11 @@ export default function AllAdminCourses() {
     );
   };
 
-  // Create Course with Modules
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create the course
       const courseFormData = new FormData(e.currentTarget);
       courseFormData.append("contentType", contentType);
 
