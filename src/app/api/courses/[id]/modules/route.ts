@@ -1,5 +1,5 @@
 import db from "@/server/db";
-import { certificates, course, courseModules, courseProgress, users } from "@/server/db/schema";
+import { certificates, course, courseModuleProgress, courseModules, courseProgress, users } from "@/server/db/schema";
 import { uploadVideo } from "@/utils/cloudinary";
 import { checkIfUserIsAdmin, getUserIdFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
@@ -187,71 +187,195 @@ export const POST = async (req: NextRequest, {params}: {params: Promise<{id: str
 //   }
 // };
 
-export const GET = async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+
+export const GET = async (
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) => {
   try {
-    const { id } = await params;
+    const { id: courseId } = await params;
     const userId = await getUserIdFromSession();
-    
+
     if (!userId) {
       return sendResponse(401, null, "Unauthorized");
     }
 
-    const certificateUser = users;
-    const courseInstructor = users;
+    // Get the course details
+    const [courseData] = await db
+      .select()
+      .from(course)
+      .where(eq(course.id, courseId))
+      .limit(1);
 
-    const certificate = await db
-      .select({
-        id: certificates.id,
-        courseId: certificates.courseId,
-        courseTitle: course.title,
-        courseDescription: course.description,
-        courseLevel: course.level,
-        courseCategory: course.category,
-        courseLanguage: course.language,
-        timeToComplete: course.timeToComplete,
-        completionMessage: certificates.completionMessage,
-        completedAt: certificates.completedAt,
-        createdAt: certificates.issuedAt,
-      })
-      .from(certificates)
-      .leftJoin(course, eq(certificates.courseId, course.id))
+    if (!courseData) {
+      return sendResponse(404, null, "Course not found");
+    }
+
+    // Get all modules for this course
+    const modules = await db
+      .select()
+      .from(courseModules)
+      .where(eq(courseModules.courseId, courseId))
+      .orderBy(courseModules.createdAt);
+
+    // Get user's progress for all modules in this course
+    const userProgress = await db
+      .select()
+      .from(courseModuleProgress)
       .where(
         and(
-          eq(certificates.courseId, id),
-          eq(certificates.userId, userId)
+          eq(courseModuleProgress.courseId, courseId),
+          eq(courseModuleProgress.userId, userId)
+        )
+      );
+
+    // Create a map of module progress
+    const progressMap = new Map(
+      userProgress.map((p) => [
+        p.moduleId,
+        {
+          isCompleted: p.isCompleted,
+          completedAt: p.completedAt,
+        },
+      ])
+    );
+
+    // Combine modules with user's progress
+    const modulesWithProgress = modules.map((module) => {
+      const progress = progressMap.get(module.id);
+      return {
+        ...module,
+        isCompleted: progress?.isCompleted || false,
+        completedAt: progress?.completedAt || null,
+      };
+    });
+
+    // Get overall course progress
+    const [overallProgress] = await db
+      .select()
+      .from(courseProgress)
+      .where(
+        and(
+          eq(courseProgress.courseId, courseId),
+          eq(courseProgress.userId, userId)
         )
       )
       .limit(1);
 
-    if (!certificate || certificate.length === 0) {
-      return sendResponse(404, null, "Certificate not found");
-    }
-
-    // Get user name separately
-    const [user] = await db
-      .select({ fullName: users.fullName })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    // Get instructor name
-    const [instructor] = await db
-      .select({ fullName: users.fullName })
-      .from(users)
-      .leftJoin(course, eq(course.createdId, users.id))
-      .where(eq(course.id, id))
-      .limit(1);
-
-    const result = {
-      ...certificate[0],
-      userName: user?.fullName || "Unknown User",
-      courseInstructorFullName: instructor?.fullName || "Unknown Instructor",
+    const responseData = {
+      ...courseData,
+      modules: modulesWithProgress,
+      progress: overallProgress || {
+        completedModules: 0,
+        totalModules: modules.length,
+        progressPercentage: 0,
+        isCompleted: false,
+      },
+      // Add this for certificate claiming logic
+      isCourseCompleted: overallProgress?.isCompleted || false,
+      moduleCount: modules.length,
     };
 
-    return sendResponse(200, result, "Certificate retrieved successfully");
-
+    return sendResponse(200, responseData, "Course modules fetched successfully");
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An error occurred";
+    console.error("Error fetching course modules:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "An error occurred";
     return sendResponse(500, null, errorMessage);
   }
 };
+
+
+// export const GET = async (
+//   req: NextRequest,
+//   { params }: { params: Promise<{ id: string }> }
+// ) => {
+//   try {
+//     const { id: courseId } = await params;
+//     const userId = await getUserIdFromSession();
+
+//     if (!userId) {
+//       return sendResponse(401, null, "Unauthorized");
+//     }
+
+//     // Get the course details
+//     const [courseData] = await db
+//       .select()
+//       .from(course)
+//       .where(eq(course.id, courseId))
+//       .limit(1);
+
+//     if (!courseData) {
+//       return sendResponse(404, null, "Course not found");
+//     }
+
+//     // Get all modules for this course
+//     const modules = await db
+//       .select()
+//       .from(courseModules)
+//       .where(eq(courseModules.courseId, courseId))
+//       .orderBy(courseModules.createdAt);
+
+//     // Get user's progress for all modules in this course
+//     const userProgress = await db
+//       .select()
+//       .from(courseModuleProgress)
+//       .where(
+//         and(
+//           eq(courseModuleProgress.courseId, courseId),
+//           eq(courseModuleProgress.userId, userId)
+//         )
+//       );
+
+//     // Create a map of module progress
+//     const progressMap = new Map(
+//       userProgress.map((p) => [
+//         p.moduleId,
+//         {
+//           isCompleted: p.isCompleted,
+//           completedAt: p.completedAt,
+//         },
+//       ])
+//     );
+
+//     // Combine modules with user's progress
+//     const modulesWithProgress = modules.map((module) => {
+//       const progress = progressMap.get(module.id);
+//       return {
+//         ...module,
+//         isCompleted: progress?.isCompleted || false,
+//         completedAt: progress?.completedAt || null,
+//       };
+//     });
+
+//     // Get overall course progress
+//     const [overallProgress] = await db
+//       .select()
+//       .from(courseProgress)
+//       .where(
+//         and(
+//           eq(courseProgress.courseId, courseId),
+//           eq(courseProgress.userId, userId)
+//         )
+//       )
+//       .limit(1);
+
+//     const responseData = {
+//       ...courseData,
+//       modules: modulesWithProgress,
+//       progress: overallProgress || {
+//         completedModules: 0,
+//         totalModules: modules.length,
+//         progressPercentage: 0,
+//         isCompleted: false,
+//       },
+//     };
+
+//     return sendResponse(200, responseData, "Course modules fetched successfully");
+//   } catch (error) {
+//     console.error("Error fetching course modules:", error);
+//     const errorMessage =
+//       error instanceof Error ? error.message : "An error occurred";
+//     return sendResponse(500, null, errorMessage);
+//   }
+// };

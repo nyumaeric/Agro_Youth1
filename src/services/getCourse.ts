@@ -22,6 +22,7 @@ export const getSingleCourseModule = async (id: string, ids: string) => {
 
 
 export interface Certificate {
+  [x: string]: any;
   id: string;
   courseId: string;
   courseTitle: string;

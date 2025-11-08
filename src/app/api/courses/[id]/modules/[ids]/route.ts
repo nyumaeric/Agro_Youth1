@@ -1,8 +1,8 @@
 import db from "@/server/db";
-import { course, courseModules } from "@/server/db/schema";
+import { course, courseModuleProgress, courseModules, courseProgress } from "@/server/db/schema";
 import { getUserIdFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { updateCourseProgress } from "../route";
 import { NextRequest } from "next/server";
 
@@ -11,23 +11,47 @@ export const GET = async (
   context: { params: Promise<{ id: string; ids: string }> }
 ) => {
   try {
-    const { ids } = await context.params;
-    
-    const module = await db
+    const { id: courseId, ids: moduleId } = await context.params;
+    const userId = await getUserIdFromSession();
+
+    if (!userId) {
+      return sendResponse(401, null, "Unauthorized");
+    }
+
+    // Get the module details
+    const [module] = await db
       .select()
       .from(courseModules)
-      .where(eq(courseModules.id, ids))
+      .where(eq(courseModules.id, moduleId))
       .limit(1);
 
-    if (!module || module.length === 0) {
+    if (!module) {
       return sendResponse(404, null, "Module not found");
     }
 
-    return sendResponse(200, module[0], "Module fetched successfully");
+    // Get user's progress for this module
+    const [progress] = await db
+      .select()
+      .from(courseModuleProgress)
+      .where(
+        and(
+          eq(courseModuleProgress.moduleId, moduleId),
+          eq(courseModuleProgress.userId, userId)
+        )
+      )
+      .limit(1);
+
+    // Combine module data with user's progress
+    const moduleWithProgress = {
+      ...module,
+      isCompleted: progress?.isCompleted || false,
+      completedAt: progress?.completedAt || null,
+    };
+
+    return sendResponse(200, moduleWithProgress, "Module fetched successfully");
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An error occurred";
-
     return sendResponse(500, null, errorMessage);
   }
 };
@@ -37,77 +61,151 @@ export const PATCH = async (
   context: { params: Promise<{ id: string; ids: string }> }
 ) => {
   try {
-    const { ids } = await context.params;
-    const requestBody = await request.json();
-    const updateData = {
-        ...requestBody,
-        updatedAt: new Date(),
-    };
-
+    const { id: courseId, ids: moduleId } = await context.params;
     const userId = await getUserIdFromSession();
+
     if (!userId) {
       return sendResponse(401, null, "Unauthorized");
     }
 
+    const requestBody = await request.json();
+    const { isCompleted } = requestBody;
 
-    const updatedModule = await db.update(courseModules).set(updateData).where(eq(courseModules.id, ids)).returning();
+    // Verify the module exists
+    const [module] = await db
+      .select()
+      .from(courseModules)
+      .where(eq(courseModules.id, moduleId))
+      .limit(1);
 
-    if (!updatedModule.length) {
+    if (!module) {
       return sendResponse(404, null, "Module not found");
     }
 
-
-    const courseId = updatedModule[0].courseId;
-
-    const allModules = await db
+    // Check if progress record exists for this user
+    const [existingProgress] = await db
       .select()
+      .from(courseModuleProgress)
+      .where(
+        and(
+          eq(courseModuleProgress.moduleId, moduleId),
+          eq(courseModuleProgress.userId, userId),
+          eq(courseModuleProgress.courseId, courseId)
+        )
+      )
+      .limit(1);
+
+    let updatedProgress;
+
+    if (existingProgress) {
+      // Update existing progress
+      [updatedProgress] = await db
+        .update(courseModuleProgress)
+        .set({
+          isCompleted: isCompleted,
+          completedAt: isCompleted ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(courseModuleProgress.id, existingProgress.id))
+        .returning();
+    } else {
+      // Create new progress record
+      [updatedProgress] = await db
+        .insert(courseModuleProgress)
+        .values({
+          userId,
+          courseId,
+          moduleId,
+          isCompleted: isCompleted,
+          completedAt: isCompleted ? new Date() : null,
+        })
+        .returning();
+    }
+
+    // CRITICAL: Calculate course progress
+    // Get total modules count
+    const [totalModulesResult] = await db
+      .select({ count: count() })
       .from(courseModules)
       .where(eq(courseModules.courseId, courseId));
 
+    const totalModules = totalModulesResult?.count || 0;
 
-    const allModulesCompleted = allModules.every((module) => module.isCompleted);
+    // Get completed modules count for this user
+    const [completedModulesResult] = await db
+      .select({ count: count() })
+      .from(courseModuleProgress)
+      .where(
+        and(
+          eq(courseModuleProgress.userId, userId),
+          eq(courseModuleProgress.courseId, courseId),
+          eq(courseModuleProgress.isCompleted, true)
+        )
+      );
 
+    const completedModules = completedModulesResult?.count || 0;
+    const progressPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+    const isCourseCompleted = completedModules === totalModules && totalModules > 0;
 
-    if (allModulesCompleted) {
+    // Update or create course progress
+    const [existingCourseProgress] = await db
+      .select()
+      .from(courseProgress)
+      .where(
+        and(
+          eq(courseProgress.userId, userId),
+          eq(courseProgress.courseId, courseId)
+        )
+      )
+      .limit(1);
 
-       await db
-        .update(course)
+    if (existingCourseProgress) {
+      await db
+        .update(courseProgress)
         .set({
-          isCourseCompleted: true,
+          completedModules,
+          totalModules,
+          progressPercentage,
+          isCompleted: isCourseCompleted,
+          completedAt: isCourseCompleted ? new Date() : null,
           updatedAt: new Date(),
         })
-        .where(
-          and(
-            eq(course.id, courseId),
-            eq(course.createdId, userId)
-          )
-        );
-
+        .where(eq(courseProgress.id, existingCourseProgress.id));
     } else {
       await db
-        .update(course)
-        .set({
-          isCourseCompleted: false,
-          updatedAt: new Date(),
-        })
-        .where(eq(course.id, courseId));
+        .insert(courseProgress)
+        .values({
+          userId,
+          courseId,
+          completedModules,
+          totalModules,
+          progressPercentage,
+          isCompleted: isCourseCompleted,
+          completedAt: isCourseCompleted ? new Date() : null,
+        });
     }
 
-
-    // if (userId) {
-    //   const progressData = await updateCourseProgress(courseId, userId);
-      
-    //   return sendResponse(200, {
-    //     message: "Module updated successfully",
-    //     progress: progressData
-    //   }, "Module updated successfully");
-    // }
-
-    return sendResponse(200, null, 'Learning resource updated successfully');
+    return sendResponse(
+      200,
+      {
+        module: {
+          ...module,
+          isCompleted: updatedProgress.isCompleted,
+          completedAt: updatedProgress.completedAt,
+        },
+        progress: {
+          completedModules,
+          totalModules,
+          progressPercentage,
+          isCompleted: isCourseCompleted,
+        }
+      },
+      "Module progress updated successfully"
+    );
   } catch (error) {
+    console.error("Error updating module progress:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An error occurred";
-
     return sendResponse(500, null, errorMessage);
   }
 };

@@ -55,6 +55,7 @@ export default function ModulePage() {
 
     const module = data.data;
     const modules = courseData?.data?.modules || [];
+    console.log("modules------------", module)
     const currentModuleIndex = modules.findIndex((m) => m.id === moduleId);
     const nextModule = modules[currentModuleIndex + 1];
     const hasNextModule = currentModuleIndex !== -1 && nextModule;

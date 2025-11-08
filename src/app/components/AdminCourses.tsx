@@ -338,7 +338,6 @@ export default function AllAdminCourses() {
           <p className="text-gray-600 mt-1">Manage and create agricultural courses</p>
         </div>
 
-        {/* Create Course Dialog */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button size="lg" className="gap-2">

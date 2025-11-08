@@ -16,6 +16,7 @@ export interface Module {
 }
 
 export interface Course {
+  [x: string]: { completedModules: number; totalModules: number; progressPercentage: number; isCompleted: boolean; };
   id: string;
   createdId: string;
   title: string;

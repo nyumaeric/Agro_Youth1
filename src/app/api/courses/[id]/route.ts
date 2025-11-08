@@ -1,64 +1,87 @@
 import db from "@/server/db";
-import { course, courseModules } from "@/server/db/schema";
+import { course, courseModuleProgress, courseModules } from "@/server/db/schema";
 import { uploadVideo } from "@/utils/cloudinary";
 import { checkIfUserIsAdmin, getUserIdFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 export const GET = async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    try {
-        const { id } = await params;
-        
-        const [courseData] = await db
-          .select({
-            id: course.id,
-            createdId: course.createdId,
-            title: course.title,
-            description: course.description,
-            timeToComplete: course.timeToComplete,
-            level: course.level,
-            category: course.category,
-            language: course.language,
-            isCourseCompleted: course.isCourseCompleted,
-            createdAt: course.createdAt,
-            updatedAt: course.updatedAt,
-            moduleCount: sql<number>`COUNT(${courseModules.id})::int`.as('module_count')
-          })
-          .from(course)
-          .leftJoin(courseModules, eq(course.id, courseModules.courseId))
-          .where(eq(course.id, id))
-          .groupBy(course.id);
-  
-        if (!courseData) {
-          return sendResponse(404, null, "Course not found");
-        }
+  try {
+      const { id } = await params;
+      const userId = await getUserIdFromSession();
+      
+      if (!userId) {
+        return sendResponse(401, null, "Unauthorized");
+      }
 
-        const modules = await db
-          .select({
-            id: courseModules.id,
-            title: courseModules.title,
-            content: courseModules.textContent,
-            durationTime: courseModules.durationTime,
-            isCompleted: courseModules.isCompleted,
-            createdAt: courseModules.createdAt,
-            updatedAt: courseModules.updatedAt,
-          })
-          .from(courseModules)
-          .where(eq(courseModules.courseId, id))
-          .orderBy(courseModules.createdAt);
+      // Get course data with module count
+      const [courseData] = await db
+        .select({
+          id: course.id,
+          createdId: course.createdId,
+          title: course.title,
+          description: course.description,
+          timeToComplete: course.timeToComplete,
+          level: course.level,
+          category: course.category,
+          language: course.language,
+          contentType: course.contentType,
+          contentUrl: course.contentUrl,
+          textContent: course.textContent,
+          isDownloadable: course.isDownloadable,
+          isCourseCompleted: course.isCourseCompleted,
+          createdAt: course.createdAt,
+          updatedAt: course.updatedAt,
+          moduleCount: sql<number>`COUNT(${courseModules.id})::int`.as('module_count')
+        })
+        .from(course)
+        .leftJoin(courseModules, eq(course.id, courseModules.courseId))
+        .where(eq(course.id, id))
+        .groupBy(course.id);
 
-        const response = {
-          ...courseData,
-          modules
-        };
-  
-        return sendResponse(200, response, "Course fetched successfully");
-        
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "An error occurred";
-        return sendResponse(500, null, errorMessage); 
-    }
+      if (!courseData) {
+        return sendResponse(404, null, "Course not found");
+      }
+
+      // Get modules with their completion status for the current user
+      const modules = await db
+        .select({
+          id: courseModules.id,
+          title: courseModules.title,
+          description: courseModules.description,
+          content: courseModules.textContent,
+          contentType: courseModules.contentType,
+          contentUrl: courseModules.contentUrl,
+          durationTime: courseModules.durationTime,
+          isCompleted: sql<boolean>`COALESCE(${courseModuleProgress.isCompleted}, false)`.as('is_completed'),
+          createdAt: courseModules.createdAt,
+          updatedAt: courseModules.updatedAt,
+        })
+        .from(courseModules)
+        .leftJoin(
+          courseModuleProgress,
+          and(
+            eq(courseModules.id, courseModuleProgress.moduleId),
+            eq(courseModuleProgress.userId, userId)
+          )
+        )
+        .where(eq(courseModules.courseId, id))
+        .orderBy(courseModules.createdAt);
+
+      const response = {
+        ...courseData,
+        modules
+      };
+
+      console.log("Course with modules:", response);
+
+      return sendResponse(200, response, "Course fetched successfully");
+      
+  } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      return sendResponse(500, null, errorMessage); 
+  }
 }
 
 export const PATCH = async (

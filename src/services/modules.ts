@@ -8,6 +8,7 @@ export interface ModuleData {
 export const updateModules = async(id: string, ids: string, data: ModuleData) => {
     try {
         const response = await axios.patch(`/api/courses/${id}/modules/${ids}`, data);
+        console.log("data===============================", response.data)
         return response.data;
     } catch (error) {
         if (axios.isAxiosError(error)) {
