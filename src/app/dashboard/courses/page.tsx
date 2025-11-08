@@ -272,17 +272,11 @@ const Courses: React.FC = () => {
                   <Card 
                     key={course.id} 
                     className="group hover:shadow-2xl transition-all duration-300 border-2 overflow-hidden p-0 relative" 
-                    // ${
-                    //   course.isCourseCompleted 
-                    //     ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 hover:border-green-400' 
-                    //     : 'bg-white border-gray-200 hover:border-gray-300'
-                    // }`}
                   >
-                    {/* Completed Course Design */}
                     {course.isCourseCompleted ? (
                       <>
                         {/* Header with Achievement Style */}
-                        <CardHeader className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-50 text-white py-6 relative overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 text-white py-6 relative overflow-hidden">
                           {/* Decorative elements */}
                           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
