@@ -32,17 +32,26 @@ export interface UserData {
   fullName: string;
   userType?: string;
   role: string;
+  profilePicUrl?: string | null;
 }
 
 interface NavUserProps {
   userinfo?: UserData[];
 }
 
+const getInitials = (name?: string) => {
+  if (!name) return "U";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+};
+
 export function NavUser({ userinfo }: NavUserProps) {
   const { isMobile } = useSidebar()
   const router = useRouter();
 
-  // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await signOut({
@@ -52,7 +61,7 @@ export function NavUser({ userinfo }: NavUserProps) {
     onSuccess: () => {
       showToast("Logged out successfully!", "success");
       router.push("/login");
-      router.refresh(); // Refresh the page to clear any cached data
+      router.refresh();
     },
     onError: (error) => {
       console.error("Logout error:", error);
@@ -81,6 +90,7 @@ export function NavUser({ userinfo }: NavUserProps) {
   }
 
   const user = userinfo[0];
+  const initials = getInitials(user.fullName);
 
   return (
     <SidebarMenu>
@@ -91,6 +101,15 @@ export function NavUser({ userinfo }: NavUserProps) {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage 
+                  src={user.profilePicUrl || ""} 
+                  alt={user.fullName}
+                />
+                <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 text-white">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.fullName}</span>
                 <span className="text-muted-foreground truncate text-xs">
@@ -109,9 +128,12 @@ export function NavUser({ userinfo }: NavUserProps) {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src="" alt={user.role} />
-                  <AvatarFallback className="rounded-lg">
-                    {user.fullName}
+                  <AvatarImage 
+                    src={user.profilePicUrl || ""} 
+                    alt={user.fullName}
+                  />
+                  <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 text-white">
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">

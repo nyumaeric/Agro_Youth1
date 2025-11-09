@@ -12,12 +12,7 @@ import { Toaster } from "react-hot-toast";
 
 const queryClient = new QueryClient();
 
-
-
 const DashboardContent = ({ children }: { children: React.ReactNode }) => {
-  // const { data: userInfo } = useGetUserInfo();
-  
-  // const hasPendingDecision = userInfo?.data?.some((val: { decision: string; }) => val.decision === "pending");
 
   return (
     <div className="relative">
