@@ -9,6 +9,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAllUser } from "@/hooks/users/useGetUsers";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import { useState } from "react";
+import showToast from "@/utils/showToast";
 
 interface User {
   id: string;
@@ -21,6 +25,21 @@ interface User {
   anonymousName: string | null;
   createdAt?: string;
   created?: string;
+}
+
+interface UpdateUserPayload {
+  userId: string;
+  roleId?: string;
+  userType?: string;
+}
+
+type UpdateType = 'role' | 'userType';
+
+interface UpdatingState {
+  [userId: string]: {
+    role?: boolean;
+    userType?: boolean;
+  };
 }
 
 const TableSkeleton = () => {
@@ -56,13 +75,109 @@ const TableSkeleton = () => {
 
 export default function UserList() {
   const { data, isLoading, isError, error } = useAllUser();
+  const queryClient = useQueryClient();
+  const [updatingState, setUpdatingState] = useState<UpdatingState>({});
 
-  const handleRoleChange = (userId: string, newRole: string) => {
-    console.log(`Changing role for user ${userId} to ${newRole}`);
+  const updateUserMutation = useMutation({
+    mutationFn: async (payload: UpdateUserPayload & { updateType: UpdateType }) => {
+      const { updateType, ...apiPayload } = payload;
+      const response = await axios.put("/api/users", apiPayload);
+      return { ...response.data, updateType };
+    },
+    onMutate: async (variables) => {
+      const { userId, updateType } = variables;
+      
+      setUpdatingState((prev) => ({
+        ...prev,
+        [userId]: {
+          ...prev[userId],
+          [updateType]: true,
+        },
+      }));
+      
+      await queryClient.cancelQueries({ queryKey: ["users"] });
+      
+      const previousUsers = queryClient.getQueryData(["users"]);
+      
+      queryClient.setQueryData(["users"], (old: any) => {
+        if (!old?.data) return old;
+        
+        return {
+          ...old,
+          data: old.data.map((user: User) =>
+            user.id === variables.userId
+              ? {
+                  ...user,
+                  ...(variables.roleId && { role: variables.roleId }),
+                  ...(variables.userType && { userType: variables.userType }),
+                }
+              : user
+          ),
+        };
+      });
+      
+      return { previousUsers, updateType };
+    },
+    onError: (error, variables, context) => {
+      const { userId, updateType } = variables;
+      
+      if (context?.previousUsers) {
+        queryClient.setQueryData(["users"], context.previousUsers);
+      }
+      
+      const errorMessage =
+        axios.isAxiosError(error)
+          ? error.response?.data?.message || "Failed to update user"
+          : "An unexpected error occurred";
+      
+      showToast(errorMessage, "error");
+      
+      setUpdatingState((prev) => ({
+        ...prev,
+        [userId]: {
+          ...prev[userId],
+          [updateType]: false,
+        },
+      }));
+    },
+    onSuccess: (data, variables) => {
+      const { userId, updateType } = variables;
+      
+      queryClient.setQueryData(["users"], (old: any) => {
+        if (!old?.data) return old;
+        
+        return {
+          ...old,
+          data: old.data.map((user: User) =>
+            user.id === userId
+              ? {
+                  ...user,
+                  ...data.data,
+                  roleName: data.data.roleName || user.roleName,
+                }
+              : user
+          ),
+        };
+      });
+      
+      showToast(data.message || "User updated successfully", "success");
+      
+      setUpdatingState((prev) => ({
+        ...prev,
+        [userId]: {
+          ...prev[userId],
+          [updateType]: false,
+        },
+      }));
+    },
+  });
+
+  const handleRoleChange = (userId: string, roleId: string) => {
+    updateUserMutation.mutate({ userId, roleId, updateType: 'role' });
   };
 
-  const handleUserTypeChange = (userId: string, newType: string) => {
-    console.log(`Changing user type for user ${userId} to ${newType}`);
+  const handleUserTypeChange = (userId: string, userType: string) => {
+    updateUserMutation.mutate({ userId, userType, updateType: 'userType' });
   };
 
   if (isLoading) {
@@ -95,7 +210,7 @@ export default function UserList() {
   const users: User[] = data?.data || [];
 
   return (
-    <div className="w-full pt-6 pr-40">
+    <div className="w-full pt-6 px-5">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Users</h1>
         <p className="text-slate-600 mt-1">
@@ -134,91 +249,121 @@ export default function UserList() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                      {user.isAnonymous && user.anonymousName
-                        ? user.anonymousName
-                        : user.fullName}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {user.phoneNumber || "N/A"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {user.role ? (
+                {users.map((user) => {
+                  const isUpdatingRole = updatingState[user.id]?.role || false;
+                  const isUpdatingUserType = updatingState[user.id]?.userType || false;
+                  
+                  return (
+                    <tr
+                      key={user.id}
+                      className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                        {user.isAnonymous && user.anonymousName
+                          ? user.anonymousName
+                          : user.fullName}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {user.phoneNumber || "N/A"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.role ? (
+                          <Select
+                            value={user.role}
+                            onValueChange={(value) =>
+                              handleRoleChange(user.id, value)
+                            }
+                            disabled={isUpdatingRole}
+                          >
+                            <SelectTrigger className="w-[180px] border-slate-200 h-9">
+                              <SelectValue>
+                                {isUpdatingRole ? (
+                                  <span className="flex items-center gap-2">
+                                    <span className="h-3 w-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                                    Updating...
+                                  </span>
+                                ) : (
+                                  user.roleName || "Select role"
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3720">
+                                Admin
+                              </SelectItem>
+                              <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3723">
+                                User
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Select
+                            onValueChange={(value) =>
+                              handleRoleChange(user.id, value)
+                            }
+                            disabled={isUpdatingRole}
+                          >
+                            <SelectTrigger className="w-[180px] border-slate-200 h-9">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3720">
+                                Admin
+                              </SelectItem>
+                              <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3723">
+                                User
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <Select
-                          value={user.role}
-                          onValueChange={(value) => handleRoleChange(user.id, value)}
+                          value={user.userType}
+                          onValueChange={(value) =>
+                            handleUserTypeChange(user.id, value)
+                          }
+                          disabled={isUpdatingUserType}
                         >
-                          <SelectTrigger className="w-[180px] border-slate-200 h-9">
+                          <SelectTrigger className="w-[140px] border-slate-200 h-9">
                             <SelectValue>
-                              {user.roleName || "Select role"}
+                              {isUpdatingUserType ? (
+                                <span className="flex items-center gap-2">
+                                  <span className="h-3 w-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                                  Updating...
+                                </span>
+                              ) : (
+                                user.userType.charAt(0).toUpperCase() +
+                                user.userType.slice(1)
+                              )}
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3720">
-                              Admin
-                            </SelectItem>
-                            <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3723">
-                              User
-                            </SelectItem>
+                            <SelectItem value="investor">Investor</SelectItem>
+                            <SelectItem value="buyer">Buyer</SelectItem>
+                            <SelectItem value="farmer">Farmer</SelectItem>
                           </SelectContent>
                         </Select>
-                      ) : (
-                        <Select
-                          onValueChange={(value) => handleRoleChange(user.id, value)}
-                        >
-                          <SelectTrigger className="w-[180px] border-slate-200 h-9">
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3720">
-                              Admin
-                            </SelectItem>
-                            <SelectItem value="5d8fde84-524e-4f07-bdf5-f64ed3cb3723">
-                              User
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Select
-                        defaultValue={user.userType}
-                        onValueChange={(value) =>
-                          handleUserTypeChange(user.id, value)
-                        }
-                      >
-                        <SelectTrigger className="w-[140px] border-slate-200 h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="investor">Investor</SelectItem>
-                          <SelectItem value="buyer">Buyer</SelectItem>
-                          <SelectItem value="seller">Seller</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-4 py-3">
-                      {user.isAnonymous ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                          Anonymous
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {new Date(user.createdAt || user.created || "").toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.isAnonymous ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            Anonymous
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {new Date(
+                          user.createdAt || user.created || ""
+                        ).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -227,4 +372,3 @@ export default function UserList() {
     </div>
   );
 }
-
