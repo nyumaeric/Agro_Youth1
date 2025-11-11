@@ -23,91 +23,49 @@ export default function Certificate({ certificate, onClose, userName }: Certific
     showToast("Generating PDF...", "success");
 
     try {
-      const html2canvas = (await import("html2canvas")).default;
+      const html2canvas = (await import("html2canvas-pro")).default;
       const { jsPDF } = await import("jspdf");
 
-      // Create a clone to avoid modifying the original
-      const clone = element.cloneNode(true) as HTMLElement;
-      
-      // Apply inline styles to fix color issues
-      clone.style.backgroundColor = "#ffffff";
-      clone.style.color = "#000000";
-      
-      // Replace all problematic colors with standard hex/rgb values
-      const allElements = clone.querySelectorAll("*");
-      allElements.forEach((el) => {
-        const htmlEl = el as HTMLElement;
-        const computedStyle = window.getComputedStyle(element.querySelector(`*:nth-child(${Array.from(allElements).indexOf(el) + 1})`) || element);
-        
-        // Fix background colors
-        if (computedStyle.backgroundColor) {
-          htmlEl.style.backgroundColor = computedStyle.backgroundColor;
-        }
-        
-        // Fix text colors
-        if (computedStyle.color) {
-          htmlEl.style.color = computedStyle.color;
-        }
-        
-        // Fix border colors
-        if (computedStyle.borderColor) {
-          htmlEl.style.borderColor = computedStyle.borderColor;
-        }
-      });
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Append clone temporarily to render
-      document.body.appendChild(clone);
-      clone.style.position = "absolute";
-      clone.style.left = "-9999px";
-      clone.style.top = "0";
-      console.log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-
-
-      const canvas = await html2canvas(clone, {
+      const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
         allowTaint: true,
         imageTimeout: 0,
-        removeContainer: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
-
-
-      // Remove the clone
-      document.body.removeChild(clone);
 
       const imgData = canvas.toDataURL("image/png", 1.0);
 
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      
+      const mmWidth = (imgWidth * 25.4) / 96;
+      const mmHeight = (imgHeight * 25.4) / 96;
+
       const pdf = new jsPDF({
-        orientation: "landscape",
+        orientation: mmWidth > mmHeight ? "landscape" : "portrait",
         unit: "mm",
-        format: "a4",
+        format: [mmWidth, mmHeight],
       });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      const yOffset = imgHeight < pdfHeight ? (pdfHeight - imgHeight) / 2 : 0;
-
-      pdf.addImage(imgData, "PNG", 0, yOffset, imgWidth, imgHeight);
+      pdf.addImage(imgData, "PNG", 0, 0, mmWidth, mmHeight, undefined, "FAST");
 
       const fileName = `${certificate.courseTitle.replace(/[^a-z0-9]/gi, "_")}_Certificate.pdf`;
-
       pdf.save(fileName);
 
       showToast("Certificate downloaded successfully!", "success");
     } catch (error) {
-      console.error("Error generating PDF000000000000000000:", error);
+      console.error("Download error:", error);
       showToast("Failed to download certificate. Please try again.", "error");
     } finally {
       setIsDownloading(false);
     }
   };
-
-
-
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -119,8 +77,7 @@ export default function Certificate({ certificate, onClose, userName }: Certific
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-5xl bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header Controls */}
+      <div className="relative w-full max-w-7xl bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Award className="w-6 h-6 text-green-600" />
@@ -144,12 +101,11 @@ export default function Certificate({ certificate, onClose, userName }: Certific
           </div>
         </div>
 
-        {/* Certificate Content */}
         <div className="p-8">
           <div
             ref={certificateRef}
-            style={{ backgroundColor: "#ffffff" }}
-            className="border-8 rounded-lg shadow-lg"
+            style={{ backgroundColor: "#ffffff", minWidth: "1200px" }}
+            className="w-full border-8 rounded-lg shadow-lg"
             data-certificate="true"
           >
             <style jsx>{`
@@ -163,17 +119,7 @@ export default function Certificate({ certificate, onClose, userName }: Certific
                 background: linear-gradient(to right, transparent, #eab308, transparent) !important;
               }
             `}</style>
-
-            {/* Decorative Corner Elements */}
-            <div className="relative p-12">
-              <div className="absolute top-0 left-0 w-16 h-16 rounded-tl-lg corner-border" style={{ borderTop: "4px solid #eab308", borderLeft: "4px solid #eab308" }}></div>
-              <div className="absolute top-0 right-0 w-16 h-16 rounded-tr-lg corner-border" style={{ borderTop: "4px solid #eab308", borderRight: "4px solid #eab308" }}></div>
-              <div className="absolute bottom-0 left-0 w-16 h-16 rounded-bl-lg corner-border" style={{ borderBottom: "4px solid #eab308", borderLeft: "4px solid #eab308" }}></div>
-              <div className="absolute bottom-0 right-0 w-16 h-16 rounded-br-lg corner-border" style={{ borderBottom: "4px solid #eab308", borderRight: "4px solid #eab308" }}></div>
-
-              {/* Certificate Content */}
               <div className="text-center space-y-8 py-8">
-                {/* Header */}
                 <div className="space-y-2">
                   <div className="flex justify-center mb-4">
                     <Award className="w-20 h-20" style={{ color: "#16a34a" }} />
@@ -238,17 +184,10 @@ export default function Certificate({ certificate, onClose, userName }: Certific
                     </p>
                   </div>
                 </div>
-
-                <div className="pt-4">
-                  <p className="text-xs" style={{ color: "#9ca3af" }}>
-                    Certificate ID: {certificate.id}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
