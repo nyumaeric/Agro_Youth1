@@ -5,6 +5,7 @@ export const createProductSchema = z.object({
     quantity: z.number().min(1, "Quantity must be at least 1").optional(),
     unit: z.string().optional(),
     price: z.number().min(0, "Price must be at least 0").optional(),
+    images: z.array(z.string()).min(1, "At least one image is required").max(10, "Maximum 10 images allowed"),
     description: z.string().max(255).optional(),
     location: z.string().max(1024).optional(),
     isAvailable: z.boolean().optional(),

@@ -36,7 +36,7 @@ const CertificateCard = ({ certificate }: { certificate: Certificate }) => {
     showToast("Generating PDF...", "success");
 
     try {
-      const html2canvas = (await import("html2canvas")).default;
+      const html2canvas = (await import("html2canvas-pro")).default;
       const { jsPDF } = await import("jspdf");
 
       const canvas = await html2canvas(certificateRef.current, {

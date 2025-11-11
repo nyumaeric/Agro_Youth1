@@ -51,4 +51,22 @@ export async function uploadImage(imageUrl: string): Promise<string> {
         throw new Error(error);
     }
 }
+
+export const uploadMultipleImages = async (imagesBase64: string[]): Promise<string[]> => {
+  try {
+    const uploadPromises = imagesBase64.map(async (imageBase64, index) => {
+      const result = await cloudinary.uploader.upload(imageBase64, {
+        folder: 'events',
+        resource_type: 'image',
+        public_id: `event_${Date.now()}_${index}`,
+      });
+      return result.secure_url;
+    });
+
+    const uploadedUrls = await Promise.all(uploadPromises);
+    return uploadedUrls;
+  } catch (error) {
+    throw error;
+  }
+};
 export default cloudinary;

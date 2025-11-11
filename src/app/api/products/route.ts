@@ -1,5 +1,6 @@
 import db from "@/server/db";
 import { products } from "@/server/db/schema";
+import { uploadMultipleImages } from "@/utils/cloudinary";
 import { getUserIdFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
 import { createProductSchema } from "@/validator/productValidator";
@@ -13,6 +14,7 @@ interface productsInterface {
     unit: string;
     price: number;
     description: string;
+    images: string[],
     location: string;
     isAvailable: boolean;
 }
@@ -42,21 +44,33 @@ export const POST = async(req: NextRequest) => {
          );
        }
 
-       const { cropName, quantity, unit, price, description, location, isAvailable } = data.data as unknown as productsInterface;
-       if(!cropName || !quantity || !unit || !price || !description || !location){
+       const { cropName, quantity, unit, price, description, location, isAvailable, images } = data.data as unknown as productsInterface;
+       if(!cropName || !quantity || !unit || !price || !description || !location || !images){
         return sendResponse(400, null, "All fields are required");
        }
-       
+
+       let processedImages: string[];
+       try {
+         processedImages = await uploadMultipleImages(images);
+       } catch (uploadError) {
+         return NextResponse.json(
+           { status: "Error!", message: uploadError }, 
+           { status: 500 }
+         );
+       }
+
        await db.insert(products).values({
         userId,
         cropName,        
         quantity,
+        images: processedImages, 
         unit,
         price,        
         description,
         location,
         isAvailable     
       })
+
 
        return sendResponse(201, null, "Product created successfully");
     } catch (error) {

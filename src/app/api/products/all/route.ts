@@ -14,6 +14,7 @@ export const GET = async (req: NextRequest) => {
           price: products.price,
           description: products.description,
           isAvailable: products.isAvailable,
+          images: products.images,
           name: users.fullName,
           phoneNumber: users.phoneNumber
         }

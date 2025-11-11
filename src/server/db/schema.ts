@@ -127,6 +127,7 @@ export const product = pgTable("products", {
     unit: varchar("unit").notNull(),
     price: integer("price").notNull(),
     userId: uuid("userId").references(() => users.id).notNull(),
+    images: jsonb("images").$type<string[]>().default([]),
     description: text("description").notNull(),
     isAvailable: boolean("isAvailable").notNull().default(true),
 });
@@ -243,7 +244,8 @@ export const products = pgTable("products", {
     cropName: varchar("cropName").notNull(),
     quantity: integer("quantity").notNull(),
     unit: varchar("unit").notNull(),
-    price: real("price").notNull(),    
+    price: real("price").notNull(), 
+    images: jsonb("images").$type<string[]>().default([]),   
     userId: uuid("userId").references(() => users.id).notNull(),
     description: text("description").notNull(),
     location: varchar("location").notNull(),

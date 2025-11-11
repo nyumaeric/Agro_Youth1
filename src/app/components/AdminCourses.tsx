@@ -354,7 +354,6 @@ export default function AllAdminCourses() {
             </DialogHeader>
 
             <form onSubmit={handleCreate} className="space-y-6 mt-4">
-              {/* Course Details Section */}
               <div className="space-y-4 p-4 border rounded-lg bg-slate-50">
                 <h3 className="font-semibold text-lg">Course Information</h3>
 
@@ -497,10 +496,9 @@ export default function AllAdminCourses() {
                 </div>
               </div>
 
-              {/* Modules Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg">Course Modules (Optional)</h3>
+                  <h3 className="font-semibold text-lg">Course Modules </h3>
                   <Button
                     type="button"
                     variant="outline"
@@ -666,7 +664,6 @@ export default function AllAdminCourses() {
         </Dialog>
       </div>
 
-      {/* Edit Course Dialog - Same as before */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
