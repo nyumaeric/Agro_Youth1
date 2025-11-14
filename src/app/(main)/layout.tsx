@@ -4,6 +4,7 @@ import "./globals.css";
 import { Provider } from "@/utils/Provider";
 import Header from "../components/Nav";
 import { Toaster } from "react-hot-toast";
+import { OfflineIndicator } from "../components/OfflineIndicator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,12 +29,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
       <Provider>
+        <OfflineIndicator />
         <Header />
-          {children}
+        {children}
       </Provider>
       <Toaster 
             position="top-center"
