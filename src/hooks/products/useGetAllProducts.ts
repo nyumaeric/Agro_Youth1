@@ -1,17 +1,9 @@
 "use client";
 import { getAllProducts, getAllProductsByUser } from "@/services/products/getProducts";
-import { getFromCache, saveToCache } from "@/utils/db";
+import { getFromCache, removeFromCache, saveToCache } from "@/utils/db";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-
-// export const useAllProductsByUser = () => {
-//     return useQuery({
-//         queryKey: ["products"],
-//         queryFn: () => getAllProductsByUser(),
-//         retry: false,
-//       });
-// }
-
+import { useCallback, useEffect } from "react";
 
 interface Product {
   id: string;
@@ -25,6 +17,8 @@ interface Product {
   images: string[];
   userId?: string;
   _pending?: boolean;
+  name: string;
+  phoneNumber: string;
 }
 
 interface ProductsResponse {
@@ -33,91 +27,171 @@ interface ProductsResponse {
 
 interface OfflineQueueItem {
   id: string;
-  productId?: string;
-  data?: any;
-  action: 'create' | 'update' | 'delete';
+  data: any;
+  action: 'create';
   timestamp: number;
 }
 
+export const useSyncOfflineProducts = () => {
+  const queryClient = useQueryClient();
+  const isClient = typeof window !== 'undefined';
 
+  const syncOfflineQueue = useCallback(async () => {
+    if (!isClient || !navigator.onLine) return;
 
-// Create product mutation with offline queue
+    const offlineQueue = getFromCache<OfflineQueueItem[]>('offline-queue-products');
+    if (!offlineQueue || offlineQueue.length === 0) return;
+
+    console.log(`Syncing ${offlineQueue.length} offline products...`);
+
+    const myProducts = getFromCache<ProductsResponse>('my-products') || { data: [] };
+    const syncedIds: string[] = [];
+
+    for (const queueItem of offlineQueue) {
+      try {
+        const existingProducts = await axios.get('/api/products');
+        const isDuplicate = existingProducts.data.data?.some(
+          (p: any) => 
+            p.cropName === queueItem.data.cropName &&
+            p.quantity === queueItem.data.quantity &&
+            Math.abs(p.createdAt - queueItem.timestamp) < 60000
+        );
+
+        if (isDuplicate) {
+          console.log(`Product ${queueItem.id} already exists, skipping...`);
+          syncedIds.push(queueItem.id);
+          
+          myProducts.data = myProducts.data.map(p => 
+            p.id === queueItem.id ? { ...p, _pending: false } : p
+          );
+          continue;
+        }
+
+        const response = await axios.post('/api/products', queueItem.data);
+        console.log(`Synced product ${queueItem.id} successfully`);
+
+        myProducts.data = myProducts.data.map(p => 
+          p.id === queueItem.id ? response.data.data : p
+        );
+
+        syncedIds.push(queueItem.id);
+      } catch (error) {
+        console.error(`Failed to sync product ${queueItem.id}:`, error);
+      }
+    }
+
+    const remainingQueue = offlineQueue.filter(
+      item => !syncedIds.includes(item.id)
+    );
+    
+    if (remainingQueue.length === 0) {
+      removeFromCache('offline-queue-products');
+    } else {
+      saveToCache('offline-queue-products', remainingQueue);
+    }
+
+    saveToCache('my-products', myProducts);
+
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['all-products'] });
+
+    console.log(`Sync complete. ${syncedIds.length} products synced, ${remainingQueue.length} remaining.`);
+  }, [queryClient, isClient]);
+
+  useEffect(() => {
+    if (!isClient) return;
+
+    const handleOnline = () => {
+      console.log('Network connection restored, syncing offline products...');
+      syncOfflineQueue();
+    };
+
+    window.addEventListener('online', handleOnline);
+
+    if (navigator.onLine) {
+      syncOfflineQueue();
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [syncOfflineQueue, isClient]);
+
+  return { syncOfflineQueue };
+};
+
 export const useCreateProduct = () => {
   const queryClient = useQueryClient();
-  
+  const { syncOfflineQueue } = useSyncOfflineProducts();
+  const isClient = typeof window !== 'undefined';
+
   return useMutation({
     mutationFn: async (productData: any) => {
-      // Check if online
-      if (!navigator.onLine) {
-        // Save to offline queue
-        const offlineQueue = (await getFromCache<OfflineQueueItem[]>('offline-queue-products')) || [];
+      const isOnline = isClient ? navigator.onLine : true;
+      
+      if (!isOnline) {
+        const offlineQueue = getFromCache<OfflineQueueItem[]>('offline-queue-products') || [];
         const queueItem: OfflineQueueItem = {
           id: `temp-${Date.now()}`,
           data: productData,
           action: 'create',
           timestamp: Date.now(),
         };
-        
+
         offlineQueue.push(queueItem);
-        await saveToCache('offline-queue-products', offlineQueue);
-        
-        // Add to local cache optimistically
-        const myProducts = (await getFromCache<ProductsResponse>('my-products')) || { data: [] };
+        saveToCache('offline-queue-products', offlineQueue);
+
+        const myProducts = getFromCache<ProductsResponse>('my-products') || { data: [] };
         myProducts.data.unshift({
           ...productData,
           id: queueItem.id,
-          _pending: true, // Mark as pending sync
+          _pending: true,
         });
-        await saveToCache('my-products', myProducts);
-        
-        return { data: productData, _pending: true };
+        saveToCache('my-products', myProducts);
+
+        return { data: { ...productData, id: queueItem.id }, _pending: true };
       }
 
-      // If online, send to server
       const response = await axios.post('/api/products', productData);
-      
-      // Update cache with server response
-      const myProducts = (await getFromCache<ProductsResponse>('my-products')) || { data: [] };
+
+      const myProducts = getFromCache<ProductsResponse>('my-products') || { data: [] };
       myProducts.data.unshift(response.data.data);
-      await saveToCache('my-products', myProducts);
-      
+      saveToCache('my-products', myProducts);
+
       return response.data;
     },
     onSuccess: () => {
-      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['all-products'] });
+      
+      if (isClient && navigator.onLine) {
+        syncOfflineQueue();
+      }
     },
     retry: false,
   });
 };
 
-
 export const useAllProductsByUser = () => {
+  const isClient = typeof window !== 'undefined';
+  const isOnline = isClient ? navigator.onLine : true;
+
   return useQuery({
     queryKey: ["products"],
     queryFn: async () => {
       const cacheKey = 'my-products';
+      const cached = getFromCache<ProductsResponse>(cacheKey);
       
-      // Try to get from cache first
-      const cached = await getFromCache(cacheKey);
-      
-      // If offline, return cached data immediately
-      if (!navigator.onLine && cached) {
+      if (!isOnline) {
         console.log('Using cached user products (offline)');
-        return cached;
+        return cached || { data: [] };
       }
 
       try {
-        // Fetch from API
         const response = await getAllProductsByUser();
-        
-        // Save to cache for offline use
-        await saveToCache(cacheKey, response);
-        
+        saveToCache(cacheKey, response);
         return response;
       } catch (error) {
-        // If fetch fails and we have cache, use it as fallback
         if (cached) {
           console.log('Using cached user products due to network error');
           return cached;
@@ -125,52 +199,36 @@ export const useAllProductsByUser = () => {
         throw error;
       }
     },
-    retry: navigator.onLine ? 1 : false,
-    refetchOnWindowFocus: navigator.onLine,
+    retry: isOnline ? 1 : false,
+    refetchOnWindowFocus: isOnline,
   });
 };
 
-
-
-// Create product mutation with offline queue
-
-
-// export const useAllProducts = () => {
-//     return useQuery({
-//         queryKey: ["all-products"],
-//         queryFn: () => getAllProducts(),
-//         retry: false,
-//       });
-// }
-
-
-
 export const useAllProducts = () => {
+  const isClient = typeof window !== 'undefined';
+  const isOnline = isClient ? navigator.onLine : true;
+
   return useQuery({
     queryKey: ["all-products"],
     queryFn: async () => {
       const cacheKey = 'all-products';
+      const cached = getFromCache<ProductsResponse>(cacheKey);
       
-      // Try to get from cache first
-      const cached = await getFromCache(cacheKey);
+      console.log("Cached products:", cached);
+      console.log("Is online:", isOnline);
       
-      // If offline, return cached data immediately
-      if (!navigator.onLine && cached) {
-        console.log('Using cached products (offline)');
-        return cached;
+      if (!isOnline) {
+        console.log('Using cached products (offline mode)');
+        return cached || { data: [] };
       }
 
       try {
-        // Fetch from API (replace with your actual API call)
-        // const response = await axios.get<{ data: Product[] }>('/api/products');
-        const products = getAllProducts();
+        const products = await getAllProducts();
         
-        // Save to cache for offline use
-        await saveToCache(cacheKey, products);
+        saveToCache(cacheKey, products);
         
         return products;
       } catch (error) {
-        // If fetch fails and we have cache, use it as fallback
         if (cached) {
           console.log('Using cached products due to network error');
           return cached;
@@ -178,14 +236,12 @@ export const useAllProducts = () => {
         throw error;
       }
     },
-    retry: (failureCount, error) => {
-      // Don't retry if offline
-      if (!navigator.onLine) return false;
-      // Retry once if online
+    retry: (failureCount) => {
+      if (isClient && !navigator.onLine) return false;
       return failureCount < 1;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 24 * 60 * 60 * 1000, // 24 hours
-    // refetchOnWindowFocus: navigator.onLine, // Only refetch when online
+    staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: isOnline,
   });
 };
