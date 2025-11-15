@@ -273,10 +273,10 @@
 
 "use client";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import { Calendar, Clock, Video, User, Users, MapPin, ExternalLink } from "lucide-react";
+import { Calendar, Clock, Video, User, Users, MapPin, ExternalLink, WifiOff } from "lucide-react";
 import { useAllLiveSessions, useAllLiveSessionsByUser } from "@/hooks/liveSessions.ts/useGetLiveSessions";
 import CreateSessionDialog from "./CreateLiveSessions";
 import { useGetMostPopularPosts } from "@/hooks/posts/useGetAllPosts";
@@ -298,12 +298,14 @@ const TimelineSession = ({
   session, 
   isOwned = false, 
   isNearest = false,
-  onJoinMeeting 
+  onJoinMeeting,
+  isOnline
 }: { 
   session: LiveSession; 
   isOwned?: boolean; 
   isNearest?: boolean;
   onJoinMeeting: (session: LiveSession) => void;
+  isOnline: boolean;
 }) => {
   const scheduledDate = new Date(session.scheduledAt);
 
@@ -320,6 +322,14 @@ const TimelineSession = ({
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const handleJoinClick = () => {
+    if (!isOnline) {
+      alert('You need to be online to join live sessions');
+      return;
+    }
+    onJoinMeeting(session);
   };
 
   return (
@@ -371,21 +381,48 @@ const TimelineSession = ({
 
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => onJoinMeeting(session)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm hover:shadow"
+                onClick={handleJoinClick}
+                disabled={!isOnline}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Video className="w-4 h-4" />
-                Join with Jitsi
+                {!isOnline ? (
+                  <>
+                    <WifiOff className="w-4 h-4" />
+                    Join with Jitsi
+                  </>
+                ) : (
+                  <>
+                    <Video className="w-4 h-4" />
+                    Join with Jitsi
+                  </>
+                )}
               </button>
               {session.meetingLink && (
                 <a
-                  href={session.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 transition-colors"
+                  href={isOnline ? session.meetingLink : '#'}
+                  target={isOnline ? "_blank" : undefined}
+                  rel={isOnline ? "noopener noreferrer" : undefined}
+                  onClick={(e) => {
+                    if (!isOnline) {
+                      e.preventDefault();
+                      alert('You need to be online to access external links');
+                    }
+                  }}
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 transition-colors ${
+                    !isOnline ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  External Link
+                  {!isOnline ? (
+                    <>
+                      <WifiOff className="w-4 h-4" />
+                      External Link
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="w-4 h-4" />
+                      External Link
+                    </>
+                  )}
                 </a>
               )}
             </div>
@@ -415,12 +452,27 @@ const TimelineSkeleton = () => (
 );
 
 export default function LiveSessions() {
-  const { data: allSessionsData, isPending: isAllPending } = useAllLiveSessions();
-  const { data: userSessionsData, isPending: isUserPending } = useAllLiveSessionsByUser();
+  const { data: allSessionsData, isPending: isAllPending, isError: isAllError } = useAllLiveSessions();
+  const { data: userSessionsData, isPending: isUserPending, isError: isUserError } = useAllLiveSessionsByUser();
   const { popularPosts, isPending: isPopularPostsPending } = useGetMostPopularPosts();
   const { data: session } = useSession();
   const [activeMeeting, setActiveMeeting] = useState<LiveSession | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
   
+  // Monitor online/offline status
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    
+    updateOnlineStatus();
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
+
   const userType = session?.user?.userType;
   const role = session?.user.role;
   const isAuthorized = userType === "investor" || role === "Admin";
@@ -461,7 +513,22 @@ export default function LiveSessions() {
   return (
     <>
       <div className="space-y-6 max-w-4xl pt-10 pl-8">
-        <div className="flex justify-between">
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 rounded-lg flex items-center gap-3">
+            <WifiOff className="h-5 w-5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">You're currently offline</p>
+              <p className="text-sm">
+                {(upcomingSessions.length > 0 || upcomingUserSessions.length > 0)
+                  ? 'Showing cached sessions. You cannot join meetings or create sessions while offline.'
+                  : 'No cached sessions available. Please connect to the internet.'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <MapPin className="w-7 h-7 text-emerald-600" />
@@ -471,10 +538,15 @@ export default function LiveSessions() {
               {isInvestor
                 ? "Your upcoming sessions and other opportunities"
                 : "Join upcoming live sessions and connect with investors"}
+              {!isOnline && (upcomingSessions.length > 0 || upcomingUserSessions.length > 0) && ' (from cache)'}
             </p>
           </div>
           {isAuthorized && (
-            <CreateSessionDialog popularPosts={popularPosts} isLoadingPosts={isPopularPostsPending} />
+            <CreateSessionDialog 
+              popularPosts={popularPosts} 
+              isLoadingPosts={isPopularPostsPending}
+              // disabled={!isOnline}
+            />
           )}
         </div>
 
@@ -505,6 +577,18 @@ export default function LiveSessions() {
               </div>
             </div>
           </div>
+        ) : (isAllError && upcomingSessions.length === 0) || (isInvestor && isUserError && upcomingUserSessions.length === 0) ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {!isOnline ? 'No Cached Sessions Available' : 'Error Loading Sessions'}
+            </h3>
+            <p className="text-gray-600">
+              {!isOnline 
+                ? 'Please connect to the internet to load live sessions.' 
+                : 'There was an error loading live sessions. Please try again later.'}
+            </p>
+          </div>
         ) : (
           <div className="space-y-6">
             {isInvestor && upcomingUserSessions.length > 0 && (
@@ -515,6 +599,12 @@ export default function LiveSessions() {
                   <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded">
                     {upcomingUserSessions.length}
                   </span>
+                  {!isOnline && (
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded flex items-center gap-1">
+                      <WifiOff className="w-3 h-3" />
+                      Cached
+                    </span>
+                  )}
                 </h2>
                 <div className="relative">
                   {upcomingUserSessions.map((sess: LiveSession) => (
@@ -524,6 +614,7 @@ export default function LiveSessions() {
                       isOwned={true}
                       isNearest={nearestSession?.id === sess.id}
                       onJoinMeeting={handleJoinMeeting}
+                      isOnline={isOnline}
                     />
                   ))}
                 </div>
@@ -535,9 +626,17 @@ export default function LiveSessions() {
                 <Users className="w-5 h-5 text-gray-700" />
                 {isInvestor ? "All Sessions" : "Available Sessions"}
                 {upcomingSessions.length > 0 && (
-                  <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                    {upcomingSessions.length}
-                  </span>
+                  <>
+                    <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                      {upcomingSessions.length}
+                    </span>
+                    {!isOnline && (
+                      <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded flex items-center gap-1">
+                        <WifiOff className="w-3 h-3" />
+                        Cached
+                      </span>
+                    )}
+                  </>
                 )}
               </h2>
               {upcomingSessions.length > 0 ? (
@@ -548,6 +647,7 @@ export default function LiveSessions() {
                       session={sess}
                       isNearest={nearestSession?.id === sess.id}
                       onJoinMeeting={handleJoinMeeting}
+                      isOnline={isOnline}
                     />
                   ))}
                 </div>
@@ -558,7 +658,9 @@ export default function LiveSessions() {
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-1">No Upcoming Sessions</h3>
                   <p className="text-sm text-gray-600">
-                    {isInvestor
+                    {!isOnline 
+                      ? 'No cached sessions. Connect to the internet to load sessions.'
+                      : isInvestor
                       ? "There are no upcoming sessions scheduled at the moment."
                       : "Check back later for upcoming live sessions."}
                   </p>
@@ -570,7 +672,7 @@ export default function LiveSessions() {
       </div>
 
       {/* Jitsi Meeting Modal */}
-      {activeMeeting && (
+      {activeMeeting && isOnline && (
         <JitsiMeetingModal
           session={activeMeeting}
           onClose={() => setActiveMeeting(null)}

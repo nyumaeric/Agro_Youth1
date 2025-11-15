@@ -42,8 +42,10 @@ export const useSyncOfflineProducts = () => {
     const offlineQueue = getFromCache<OfflineQueueItem[]>('offline-queue-products');
     if (!offlineQueue || offlineQueue.length === 0) return;
 
-    console.log(`Syncing ${offlineQueue.length} offline products...`);
 
+
+
+    
     const myProducts = getFromCache<ProductsResponse>('my-products') || { data: [] };
     const syncedIds: string[] = [];
 
@@ -148,6 +150,7 @@ export const useCreateProduct = () => {
           _pending: true,
         });
         saveToCache('my-products', myProducts);
+        saveToCache('all-products', myProducts);
 
         return { data: { ...productData, id: queueItem.id }, _pending: true };
       }
@@ -190,6 +193,7 @@ export const useAllProductsByUser = () => {
       try {
         const response = await getAllProductsByUser();
         saveToCache(cacheKey, response);
+  
         return response;
       } catch (error) {
         if (cached) {
@@ -214,9 +218,6 @@ export const useAllProducts = () => {
       const cacheKey = 'all-products';
       const cached = getFromCache<ProductsResponse>(cacheKey);
       
-      console.log("Cached products:", cached);
-      console.log("Is online:", isOnline);
-      
       if (!isOnline) {
         console.log('Using cached products (offline mode)');
         return cached || { data: [] };
@@ -240,7 +241,7 @@ export const useAllProducts = () => {
       if (isClient && !navigator.onLine) return false;
       return failureCount < 1;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, 
     gcTime: 24 * 60 * 60 * 1000,
     refetchOnWindowFocus: isOnline,
   });
