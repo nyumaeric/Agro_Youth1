@@ -3,6 +3,7 @@ import { Jost } from 'next/font/google'
 import "./globals.css";
 import PWARegister from "@/components/ui/pwa-register";
 import OfflineToggle from "./components/offline-toggle";
+import ServiceWorkerRegistration from "./components/ServiceWorkerRegistration";
 
 const jost = Jost({
   weight: ['400', '500', '600', '700'],
@@ -33,6 +34,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body className={jost.className}>
+        <ServiceWorkerRegistration />
         <PWARegister />
         {/* <OfflineToggle /> */}
         {children}
