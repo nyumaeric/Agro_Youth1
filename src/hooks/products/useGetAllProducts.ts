@@ -104,7 +104,6 @@ export const useSyncOfflineProducts = () => {
     if (!isClient) return;
 
     const handleOnline = () => {
-      console.log('Network connection restored, syncing offline products...');
       syncOfflineQueue();
     };
 
@@ -197,7 +196,6 @@ export const useAllProductsByUser = () => {
         return response;
       } catch (error) {
         if (cached) {
-          console.log('Using cached user products due to network error');
           return cached;
         }
         throw error;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Jost } from 'next/font/google'
 import "./globals.css";
 import PWARegister from "@/components/ui/pwa-register";
-
+import OfflineToggle from "./components/offline-toggle";
 
 const jost = Jost({
   weight: ['400', '500', '600', '700'],
@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   },
 };
 
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,11 +32,10 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
-      <body
-        className={jost.className}
-      >
-          <PWARegister />
-          {children}
+      <body className={jost.className}>
+        <PWARegister />
+        {/* <OfflineToggle /> */}
+        {children}
       </body>
     </html>
   );

@@ -30,6 +30,20 @@ export const users = pgTable("users", {
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
 
+export const projects = pgTable("projects", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  ownerId: uuid("ownerId").references(() => users.id).notNull(),
+  goalAmount: integer("goalAmount").notNull(),
+  // raisedAmount: integer("raisedAmount").notNull().default(0),
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
 export const donationApplications = pgTable('donation_applications', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
@@ -37,6 +51,7 @@ export const donationApplications = pgTable('donation_applications', {
     .notNull(),
   reviewedBy: uuid('reviewed_by')
     .references(() => users.id, { onDelete: 'set null' }),
+  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
   projectTitle: varchar('project_title', { length: 255 }).notNull(),
   organization: varchar('organization', { length: 255 }),
   projectDescription: text('project_description').notNull(),
@@ -177,9 +192,9 @@ export const Comment = pgTable("comments", {
     isAnonymous: boolean("isAnonymous").default(false),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
-  });
+});
  
-  export const courseProgress = pgTable("course_progress", {
+export const courseProgress = pgTable("course_progress", {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
       .references(() => users.id, { onDelete: "cascade" })
@@ -251,6 +266,8 @@ export const products = pgTable("products", {
     location: varchar("location").notNull(),
     isAvailable: boolean("isAvailable").notNull().default(true),
 });
+
+
 
 
 export const liveSessions = pgTable("liveSessions", {

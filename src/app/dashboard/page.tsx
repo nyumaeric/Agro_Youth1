@@ -911,7 +911,7 @@ const Dashboard: React.FC = () => {
                 <Link href="/dashboard/courses">
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start hover:bg-green-50 disabled:opacity-50"
+                    className="w-full justify-start hover:bg-green-50 disabled:opacity-50 mb-2"
                     disabled={!isOnline}
                   >
                     {/* {!isOnline && <WifiOff className="w-4 h-4 mr-2" />} */}
@@ -922,7 +922,7 @@ const Dashboard: React.FC = () => {
                 <Link href="/dashboard/courses/enrolled">
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start hover:bg-blue-50 disabled:opacity-50"
+                    className="w-full justify-start hover:bg-blue-50 disabled:opacity-50 mb-2"
                     disabled={!isOnline}
                   >
                     <Activity className="w-4 h-4 mr-2" />
@@ -932,7 +932,7 @@ const Dashboard: React.FC = () => {
                 <Link href="/dashboard/apply">
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start hover:bg-purple-50 disabled:opacity-50"
+                    className="w-full justify-start hover:bg-purple-50 disabled:opacity-50 mb-2"
                     disabled={!isOnline}
                   >
                     <FileText className="w-4 h-4 mr-2" />
@@ -942,7 +942,7 @@ const Dashboard: React.FC = () => {
                 <Link href="/dashboard/allapplications">
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start hover:bg-yellow-50 disabled:opacity-50"
+                    className="w-full justify-start hover:bg-yellow-50 disabled:opacity-50 mb-2"
                     disabled={!isOnline}
                   >
                     <Award className="w-4 h-4 mr-2" />

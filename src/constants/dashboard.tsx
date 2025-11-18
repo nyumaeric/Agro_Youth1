@@ -122,9 +122,14 @@ export const investorMenuItems: NavItem[] = [
     icon: createIcon(Group)
   },
   {
-    title: "Review the Application",
+    title: "Project",
+    href: "/dashboard/projects",
+    icon: createIcon(BookOpen),
+  },
+  {
+    title: "Application Review",
     href: "/dashboard/investor/review-applications",
-    icon: createIcon(Group)
+    icon: createIcon(Award)
   },
   {
     title: "Profile",
@@ -171,13 +176,9 @@ export const farmerMenuItems: NavItem[] = [
   },
   {
     title: "Donation",
-    href: "/dashboard/apply",
+    href: "/dashboard/allapplications",
     icon: createIcon(BookOpen),
     items: [
-      {
-        title: "Apply",
-        href: "/dashboard/apply"
-      },
       {
         title: "All Applications",
         href: "/dashboard/allapplications"

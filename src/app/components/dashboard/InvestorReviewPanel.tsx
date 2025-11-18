@@ -285,9 +285,8 @@ const InvestorReviewPanel: React.FC = () => {
           ))}
         </Tabs>
 
-        {/* Review Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 {reviewAction === 'approve' ? 'Approve' : 'Reject'} Application
@@ -297,7 +296,7 @@ const InvestorReviewPanel: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 relative">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Review Notes *
@@ -310,7 +309,7 @@ const InvestorReviewPanel: React.FC = () => {
                   }
                   value={reviewNotes}
                   onChange={(e) => setReviewNotes(e.target.value)}
-                  className="min-h-[150px]"
+                  className="min-h-[150px] w-full"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   These notes will be sent to the applicant via email
