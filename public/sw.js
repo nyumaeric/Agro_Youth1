@@ -186,435 +186,10 @@
 
 
 
-// const CACHE_VERSION = 'v1.0.3';
-// const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
-// const RUNTIME_CACHE = `runtime-cache-${CACHE_VERSION}`;
-// const TIMEOUT_MS = 2000; // Reduced timeout for faster offline detection
-
-// // Files to cache immediately on install
-// const PRECACHE_URLS = [
-//   '/',
-//   '/manifest.json',
-// ];
-
-// // Install event - cache essential files
-// self.addEventListener('install', (event) => {
-//   console.log('[ServiceWorker] Installing...');
-  
-//   event.waitUntil(
-//     caches.open(CACHE_NAME)
-//       .then((cache) => {
-//         console.log('[ServiceWorker] Precaching app shell');
-//         return cache.addAll(PRECACHE_URLS).catch((error) => {
-//           console.error('[ServiceWorker] Precache failed:', error);
-//         });
-//       })
-//       .then(() => self.skipWaiting())
-//   );
-// });
-
-// self.addEventListener('activate', (event) => {
-//   console.log('[ServiceWorker] Activating...');
-  
-//   event.waitUntil(
-//     caches.keys().then((cacheNames) => {
-//       return Promise.all(
-//         cacheNames.map((cacheName) => {
-//           if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
-//             console.log('[ServiceWorker] Deleting old cache:', cacheName);
-//             return caches.delete(cacheName);
-//           }
-//         })
-//       );
-//     }).then(() => {
-//       console.log('[ServiceWorker] Claiming clients');
-//       return self.clients.claim();
-//     })
-//   );
-// });
-
-// // Helper: Check if we're online
-// async function isOnline() {
-//   if (!navigator.onLine) return false;
-  
-//   try {
-//     const response = await fetch('/manifest.json', {
-//       method: 'HEAD',
-//       cache: 'no-store'
-//     });
-//     return response.ok;
-//   } catch {
-//     return false;
-//   }
-// }
-
-// // Helper: Race between network and timeout
-// function fetchWithTimeout(request, timeout = TIMEOUT_MS) {
-//   return Promise.race([
-//     fetch(request),
-//     new Promise((_, reject) => 
-//       setTimeout(() => reject(new Error('Network timeout')), timeout)
-//     )
-//   ]);
-// }
-
-// // Fetch event - optimized for instant offline navigation
-// self.addEventListener('fetch', (event) => {
-//   const { request } = event;
-//   const url = new URL(request.url);
-
-//   // Skip non-http(s) requests
-//   if (!url.protocol.startsWith('http')) {
-//     return;
-//   }
-
-//   // Skip Next.js internal requests (let them pass through)
-//   if (
-//     url.pathname.startsWith('/_next/static/') ||
-//     url.pathname.startsWith('/__nextjs') ||
-//     url.pathname.includes('/api/auth/') ||
-//     url.pathname === '/api/revalidate' ||
-//     url.searchParams.has('_rsc')
-//   ) {
-//     return;
-//   }
-
-//   // Handle navigation requests (pages) - OPTIMIZED FOR SPEED
-//   if (request.mode === 'navigate') {
-//     event.respondWith(
-//       (async () => {
-//         // First check if we have it in cache
-//         const cachedResponse = await caches.match(request);
-        
-//         // If offline, serve from cache immediately
-//         if (!navigator.onLine && cachedResponse) {
-//           console.log('[ServiceWorker] Offline - serving from cache:', url.pathname);
-//           return cachedResponse;
-//         }
-        
-//         try {
-//           // Try network with short timeout
-//           const networkResponse = await fetchWithTimeout(request, TIMEOUT_MS);
-          
-//           // Cache successful responses
-//           if (networkResponse.ok) {
-//             const responseToCache = networkResponse.clone();
-//             caches.open(RUNTIME_CACHE).then((cache) => {
-//               cache.put(request, responseToCache);
-//             });
-//           }
-          
-//           return networkResponse;
-//         } catch (error) {
-//           console.log('[ServiceWorker] Network failed, using cache:', url.pathname);
-          
-//           // Network failed - serve from cache
-//           if (cachedResponse) {
-//             return cachedResponse;
-//           }
-          
-//           // Try offline page
-//           const offlinePage = await caches.match('/offline');
-//           if (offlinePage) {
-//             return offlinePage;
-//           }
-          
-//           // Try homepage as fallback
-//           const homePage = await caches.match('/');
-//           if (homePage) {
-//             return homePage;
-//           }
-          
-//           // Final fallback: inline HTML
-//           return new Response(
-//             `<!DOCTYPE html>
-//             <html lang="en">
-//             <head>
-//               <meta charset="UTF-8">
-//               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//               <title>Offline</title>
-//               <style>
-//                 * { margin: 0; padding: 0; box-sizing: border-box; }
-//                 body {
-//                   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-//                   display: flex;
-//                   align-items: center;
-//                   justify-content: center;
-//                   min-height: 100vh;
-//                   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-//                   color: white;
-//                   padding: 20px;
-//                 }
-//                 .container {
-//                   text-align: center;
-//                   max-width: 500px;
-//                   animation: fadeIn 0.3s ease;
-//                 }
-//                 @keyframes fadeIn {
-//                   from { opacity: 0; transform: translateY(20px); }
-//                   to { opacity: 1; transform: translateY(0); }
-//                 }
-//                 .icon {
-//                   font-size: 4rem;
-//                   margin-bottom: 1.5rem;
-//                   animation: pulse 2s infinite;
-//                 }
-//                 @keyframes pulse {
-//                   0%, 100% { transform: scale(1); }
-//                   50% { transform: scale(1.1); }
-//                 }
-//                 h1 {
-//                   font-size: 2.5rem;
-//                   margin-bottom: 1rem;
-//                   font-weight: 700;
-//                 }
-//                 p {
-//                   font-size: 1.1rem;
-//                   margin-bottom: 2rem;
-//                   opacity: 0.95;
-//                   line-height: 1.6;
-//                 }
-//                 button {
-//                   background: white;
-//                   color: #10b981;
-//                   border: none;
-//                   padding: 14px 32px;
-//                   font-size: 1rem;
-//                   border-radius: 12px;
-//                   cursor: pointer;
-//                   font-weight: 600;
-//                   transition: all 0.2s;
-//                   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-//                 }
-//                 button:hover {
-//                   transform: translateY(-2px);
-//                   box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-//                 }
-//                 button:active {
-//                   transform: translateY(0);
-//                 }
-//                 .tip {
-//                   margin-top: 2rem;
-//                   font-size: 0.9rem;
-//                   opacity: 0.8;
-//                   background: rgba(255,255,255,0.1);
-//                   padding: 12px;
-//                   border-radius: 8px;
-//                 }
-//               </style>
-//             </head>
-//             <body>
-//               <div class="container">
-//                 <div class="icon">📡</div>
-//                 <h1>You're Offline</h1>
-//                 <p>
-//                   No internet connection detected. Pages you've previously 
-//                   visited are still available in your cache.
-//                 </p>
-//                 <button onclick="location.reload()">🔄 Try Again</button>
-//                 <div class="tip">
-//                   💡 Your connection will be restored automatically when back online
-//                 </div>
-//               </div>
-//               <script>
-//                 // Auto-reload when back online
-//                 window.addEventListener('online', () => {
-//                   console.log('Back online!');
-//                   setTimeout(() => location.reload(), 500);
-//                 });
-                
-//                 // Show online status
-//                 setInterval(() => {
-//                   if (navigator.onLine) {
-//                     location.reload();
-//                   }
-//                 }, 3000);
-//               </script>
-//             </body>
-//             </html>`,
-//             {
-//               status: 200,
-//               headers: {
-//                 'Content-Type': 'text/html',
-//                 'Cache-Control': 'no-store'
-//               }
-//             }
-//           );
-//         }
-//       })()
-//     );
-//     return;
-//   }
-
-//   // Handle API requests - Fast timeout with cache fallback
-//   if (url.pathname.startsWith('/api/')) {
-//     event.respondWith(
-//       (async () => {
-//         // If offline, serve from cache immediately
-//         if (!navigator.onLine) {
-//           const cachedResponse = await caches.match(request);
-//           if (cachedResponse) {
-//             return cachedResponse;
-//           }
-//           return new Response(
-//             JSON.stringify({ error: 'Offline', offline: true }),
-//             {
-//               status: 503,
-//               headers: { 'Content-Type': 'application/json' }
-//             }
-//           );
-//         }
-        
-//         try {
-//           const response = await fetchWithTimeout(request, TIMEOUT_MS);
-          
-//           // Cache successful GET requests
-//           if (request.method === 'GET' && response.ok) {
-//             const responseToCache = response.clone();
-//             caches.open(RUNTIME_CACHE).then((cache) => {
-//               cache.put(request, responseToCache);
-//             });
-//           }
-          
-//           return response;
-//         } catch (error) {
-//           // Try cache
-//           const cachedResponse = await caches.match(request);
-//           if (cachedResponse) {
-//             return cachedResponse;
-//           }
-          
-//           return new Response(
-//             JSON.stringify({ error: 'Network error', offline: true }),
-//             {
-//               status: 503,
-//               headers: { 'Content-Type': 'application/json' }
-//             }
-//           );
-//         }
-//       })()
-//     );
-//     return;
-//   }
-
-//   // Handle images - Cache First for instant loading
-//   if (
-//     request.destination === 'image' ||
-//     url.pathname.match(/\.(jpg|jpeg|png|gif|webp|svg|ico|avif)$/i)
-//   ) {
-//     event.respondWith(
-//       (async () => {
-//         const cachedResponse = await caches.match(request);
-//         if (cachedResponse) {
-//           return cachedResponse;
-//         }
-        
-//         try {
-//           const response = await fetch(request);
-//           if (response.ok) {
-//             const responseToCache = response.clone();
-//             caches.open(RUNTIME_CACHE).then((cache) => {
-//               cache.put(request, responseToCache);
-//             });
-//           }
-//           return response;
-//         } catch {
-//           return new Response('', { status: 404 });
-//         }
-//       })()
-//     );
-//     return;
-//   }
-
-//   // Handle CSS and JS - Cache First with background update
-//   if (
-//     request.destination === 'style' ||
-//     request.destination === 'script' ||
-//     url.pathname.match(/\.(css|js)$/i)
-//   ) {
-//     event.respondWith(
-//       (async () => {
-//         const cachedResponse = await caches.match(request);
-        
-//         // Serve cache immediately
-//         if (cachedResponse) {
-//           // Update in background
-//           fetch(request).then((response) => {
-//             if (response.ok) {
-//               caches.open(RUNTIME_CACHE).then((cache) => {
-//                 cache.put(request, response);
-//               });
-//             }
-//           }).catch(() => {});
-          
-//           return cachedResponse;
-//         }
-        
-//         // No cache, fetch from network
-//         const response = await fetch(request);
-//         if (response.ok) {
-//           const responseToCache = response.clone();
-//           caches.open(RUNTIME_CACHE).then((cache) => {
-//             cache.put(request, responseToCache);
-//           });
-//         }
-//         return response;
-//       })()
-//     );
-//     return;
-//   }
-
-//   // Default: network with cache fallback
-//   event.respondWith(
-//     (async () => {
-//       try {
-//         const response = await fetch(request);
-//         if (response.ok && request.method === 'GET') {
-//           const responseToCache = response.clone();
-//           caches.open(RUNTIME_CACHE).then((cache) => {
-//             cache.put(request, responseToCache);
-//           });
-//         }
-//         return response;
-//       } catch {
-//         const cachedResponse = await caches.match(request);
-//         return cachedResponse || new Response('Offline', { status: 503 });
-//       }
-//     })()
-//   );
-// });
-
-// // Listen for messages from the client
-// self.addEventListener('message', (event) => {
-//   if (event.data && event.data.type === 'SKIP_WAITING') {
-//     self.skipWaiting();
-//   }
-  
-//   if (event.data && event.data.type === 'CACHE_URLS') {
-//     event.waitUntil(
-//       caches.open(RUNTIME_CACHE).then((cache) => {
-//         return cache.addAll(event.data.payload).catch((error) => {
-//           console.error('[ServiceWorker] Failed to cache URLs:', error);
-//         });
-//       })
-//     );
-//   }
-  
-//   if (event.data && event.data.type === 'CLEAR_CACHE') {
-//     event.waitUntil(
-//       caches.keys().then((cacheNames) => {
-//         return Promise.all(
-//           cacheNames.map((cacheName) => caches.delete(cacheName))
-//         );
-//       })
-//     );
-//   }
-// });
-
-const CACHE_VERSION = 'v1.0.4';
+const CACHE_VERSION = 'v1.0.3';
 const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-cache-${CACHE_VERSION}`;
-const TIMEOUT_MS = 2000;
+const TIMEOUT_MS = 2000; // Reduced timeout for faster offline detection
 
 // Files to cache immediately on install
 const PRECACHE_URLS = [
@@ -664,40 +239,19 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Helper: Normalize URL for cache matching
-function normalizeUrl(url) {
-  const parsedUrl = new URL(url);
-  // Remove trailing slash for consistency
-  let pathname = parsedUrl.pathname;
-  if (pathname !== '/' && pathname.endsWith('/')) {
-    pathname = pathname.slice(0, -1);
+// Helper: Check if we're online
+async function isOnline() {
+  if (!navigator.onLine) return false;
+  
+  try {
+    const response = await fetch('/manifest.json', {
+      method: 'HEAD',
+      cache: 'no-store'
+    });
+    return response.ok;
+  } catch {
+    return false;
   }
-  return `${parsedUrl.origin}${pathname}${parsedUrl.search}`;
-}
-
-// Helper: Try to match request with normalized URLs
-async function matchCache(request) {
-  const normalizedUrl = normalizeUrl(request.url);
-  
-  // Try exact match first
-  let response = await caches.match(request);
-  if (response) return response;
-  
-  // Try normalized URL
-  response = await caches.match(normalizedUrl);
-  if (response) return response;
-  
-  // Try with trailing slash
-  response = await caches.match(normalizedUrl + '/');
-  if (response) return response;
-  
-  // Try without trailing slash
-  if (normalizedUrl.endsWith('/')) {
-    response = await caches.match(normalizedUrl.slice(0, -1));
-    if (response) return response;
-  }
-  
-  return null;
 }
 
 // Helper: Race between network and timeout
@@ -720,7 +274,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip Next.js internal requests
+  // Skip Next.js internal requests (let them pass through)
   if (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/__nextjs') ||
@@ -735,65 +289,163 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        // First check if we have it in cache (with flexible matching)
-        const cachedResponse = await matchCache(request);
+        // First check if we have it in cache
+        const cachedResponse = await caches.match(request);
         
         // If offline, serve from cache immediately
-        if (!navigator.onLine) {
-          if (cachedResponse) {
-            console.log('[ServiceWorker] Offline - serving from cache:', url.pathname);
-            return cachedResponse;
-          }
-          
-          // If no exact match, try to serve the homepage as fallback for SPA
-          console.log('[ServiceWorker] No cache for', url.pathname, '- trying homepage');
-          const homePage = await caches.match('/');
-          if (homePage) {
-            return homePage;
-          }
-          
-          // Return offline page
-          return getOfflinePage();
+        if (!navigator.onLine && cachedResponse) {
+          console.log('[ServiceWorker] Offline - serving from cache:', url.pathname);
+          return cachedResponse;
         }
         
         try {
           // Try network with short timeout
           const networkResponse = await fetchWithTimeout(request, TIMEOUT_MS);
           
-          // Cache successful responses in BOTH caches for redundancy
+          // Cache successful responses
           if (networkResponse.ok) {
             const responseToCache = networkResponse.clone();
-            const responseToCache2 = networkResponse.clone();
-            
-            // Store in both caches
-            Promise.all([
-              caches.open(RUNTIME_CACHE).then((cache) => {
-                cache.put(request, responseToCache);
-              }),
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, responseToCache2);
-              })
-            ]);
+            caches.open(RUNTIME_CACHE).then((cache) => {
+              cache.put(request, responseToCache);
+            });
           }
           
           return networkResponse;
         } catch (error) {
           console.log('[ServiceWorker] Network failed, using cache:', url.pathname);
           
-          // Network failed - serve from cache with flexible matching
+          // Network failed - serve from cache
           if (cachedResponse) {
             return cachedResponse;
           }
           
-          // For SPA routes, serve homepage (Next.js will handle routing)
+          // Try offline page
+          const offlinePage = await caches.match('/offline');
+          if (offlinePage) {
+            return offlinePage;
+          }
+          
+          // Try homepage as fallback
           const homePage = await caches.match('/');
           if (homePage) {
-            console.log('[ServiceWorker] Serving homepage for SPA route');
             return homePage;
           }
           
-          // Final fallback: offline page
-          return getOfflinePage();
+          // Final fallback: inline HTML
+          return new Response(
+            `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Offline</title>
+              <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  min-height: 100vh;
+                  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  color: white;
+                  padding: 20px;
+                }
+                .container {
+                  text-align: center;
+                  max-width: 500px;
+                  animation: fadeIn 0.3s ease;
+                }
+                @keyframes fadeIn {
+                  from { opacity: 0; transform: translateY(20px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+                .icon {
+                  font-size: 4rem;
+                  margin-bottom: 1.5rem;
+                  animation: pulse 2s infinite;
+                }
+                @keyframes pulse {
+                  0%, 100% { transform: scale(1); }
+                  50% { transform: scale(1.1); }
+                }
+                h1 {
+                  font-size: 2.5rem;
+                  margin-bottom: 1rem;
+                  font-weight: 700;
+                }
+                p {
+                  font-size: 1.1rem;
+                  margin-bottom: 2rem;
+                  opacity: 0.95;
+                  line-height: 1.6;
+                }
+                button {
+                  background: white;
+                  color: #10b981;
+                  border: none;
+                  padding: 14px 32px;
+                  font-size: 1rem;
+                  border-radius: 12px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  transition: all 0.2s;
+                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                }
+                button:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+                }
+                button:active {
+                  transform: translateY(0);
+                }
+                .tip {
+                  margin-top: 2rem;
+                  font-size: 0.9rem;
+                  opacity: 0.8;
+                  background: rgba(255,255,255,0.1);
+                  padding: 12px;
+                  border-radius: 8px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="icon">📡</div>
+                <h1>You're Offline</h1>
+                <p>
+                  No internet connection detected. Pages you've previously 
+                  visited are still available in your cache.
+                </p>
+                <button onclick="location.reload()">🔄 Try Again</button>
+                <div class="tip">
+                  💡 Your connection will be restored automatically when back online
+                </div>
+              </div>
+              <script>
+                // Auto-reload when back online
+                window.addEventListener('online', () => {
+                  console.log('Back online!');
+                  setTimeout(() => location.reload(), 500);
+                });
+                
+                // Show online status
+                setInterval(() => {
+                  if (navigator.onLine) {
+                    location.reload();
+                  }
+                }, 3000);
+              </script>
+            </body>
+            </html>`,
+            {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/html',
+                'Cache-Control': 'no-store'
+              }
+            }
+          );
         }
       })()
     );
@@ -806,7 +458,7 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         // If offline, serve from cache immediately
         if (!navigator.onLine) {
-          const cachedResponse = await matchCache(request);
+          const cachedResponse = await caches.match(request);
           if (cachedResponse) {
             return cachedResponse;
           }
@@ -833,7 +485,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         } catch (error) {
           // Try cache
-          const cachedResponse = await matchCache(request);
+          const cachedResponse = await caches.match(request);
           if (cachedResponse) {
             return cachedResponse;
           }
@@ -858,7 +510,7 @@ self.addEventListener('fetch', (event) => {
   ) {
     event.respondWith(
       (async () => {
-        const cachedResponse = await matchCache(request);
+        const cachedResponse = await caches.match(request);
         if (cachedResponse) {
           return cachedResponse;
         }
@@ -888,7 +540,7 @@ self.addEventListener('fetch', (event) => {
   ) {
     event.respondWith(
       (async () => {
-        const cachedResponse = await matchCache(request);
+        const cachedResponse = await caches.match(request);
         
         // Serve cache immediately
         if (cachedResponse) {
@@ -931,122 +583,12 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       } catch {
-        const cachedResponse = await matchCache(request);
+        const cachedResponse = await caches.match(request);
         return cachedResponse || new Response('Offline', { status: 503 });
       }
     })()
   );
 });
-
-// Helper function to generate offline page
-function getOfflinePage() {
-  return new Response(
-    `<!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Offline</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          padding: 20px;
-        }
-        .container {
-          text-align: center;
-          max-width: 500px;
-          animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .icon {
-          font-size: 4rem;
-          margin-bottom: 1.5rem;
-          animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-        h1 {
-          font-size: 2.5rem;
-          margin-bottom: 1rem;
-          font-weight: 700;
-        }
-        p {
-          font-size: 1.1rem;
-          margin-bottom: 2rem;
-          opacity: 0.95;
-          line-height: 1.6;
-        }
-        button {
-          background: white;
-          color: #10b981;
-          border: none;
-          padding: 14px 32px;
-          font-size: 1rem;
-          border-radius: 12px;
-          cursor: pointer;
-          font-weight: 600;
-          transition: all 0.2s;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          margin: 0 8px 8px 0;
-        }
-        button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-        }
-        .tip {
-          margin-top: 2rem;
-          font-size: 0.9rem;
-          opacity: 0.8;
-          background: rgba(255,255,255,0.1);
-          padding: 12px;
-          border-radius: 8px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="icon">📡</div>
-        <h1>You're Offline</h1>
-        <p>
-          This page isn't available offline. Please visit it while online first,
-          or try one of the cached pages below.
-        </p>
-        <button onclick="location.reload()">🔄 Try Again</button>
-        <button onclick="location.href='/'">🏠 Go Home</button>
-        <div class="tip">
-          💡 Visit pages while online to make them available offline
-        </div>
-      </div>
-      <script>
-        // Auto-reload when back online
-        window.addEventListener('online', () => {
-          console.log('Back online!');
-          setTimeout(() => location.reload(), 500);
-        });
-      </script>
-    </body>
-    </html>`,
-    {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html',
-        'Cache-Control': 'no-store'
-      }
-    }
-  );
-}
 
 // Listen for messages from the client
 self.addEventListener('message', (event) => {
