@@ -475,15 +475,11 @@ export default function ProjectsPage() {
         {/* Hero Header */}
         <div className="mb-12">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full mb-4 font-medium text-sm">
-              <Sparkles className="w-4 h-4" />
-              Discover Opportunities
-            </div>
             <h1 className="text-5xl font-bold bg-gradient-to-r from-yellow-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">
-              Investment Projects
+            Available Investments
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Browse available projects and apply for funding opportunities to grow your agricultural ventures
+            Explore available agricultural investment opportunities across different sectors.
             </p>
           </div>
 

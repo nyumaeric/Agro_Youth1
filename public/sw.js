@@ -624,7 +624,6 @@ const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-cache-${CACHE_VERSION}`;
 const TIMEOUT_MS = 2000;
 
-// Files to cache immediately on install
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
@@ -633,10 +632,10 @@ const PRECACHE_URLS = [
   '/courses',
   '/dashboard',
   '/dashboard/*',
-  '/apply'
+  '/apply',
+  '/*'
 ];
 
-// Install event - cache essential files
 self.addEventListener('install', (event) => {
   console.log('[ServiceWorker] Installing...');
   
