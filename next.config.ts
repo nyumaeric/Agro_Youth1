@@ -78,17 +78,16 @@
 
 // export default withPWA(nextConfig);
 
-
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
-  register: false, // We'll register manually
+  register: true, // Changed to true - let it auto-register
   sw: "sw.js",
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
+  cacheOnFrontEndNav: false, // CRITICAL: Changed to false
+  aggressiveFrontEndNavCaching: false, // CRITICAL: Changed to false
   reloadOnOnline: true,
   workboxOptions: {
     disableDevLogs: true,
@@ -106,5 +105,3 @@ const nextConfig: NextConfig = {
 };
 
 export default withPWA(nextConfig);
-
-
