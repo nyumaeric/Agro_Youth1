@@ -633,7 +633,6 @@ const PRECACHE_URLS = [
   '/dashboard',
   '/dashboard/*',
   '/apply',
-  '/*'
 ];
 
 self.addEventListener('install', (event) => {
