@@ -628,6 +628,12 @@ const TIMEOUT_MS = 2000;
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
+  '/market',
+  '/investors',
+  '/courses',
+  '/dashboard',
+  '/dashboard/*',
+  '/apply'
 ];
 
 // Install event - cache essential files
