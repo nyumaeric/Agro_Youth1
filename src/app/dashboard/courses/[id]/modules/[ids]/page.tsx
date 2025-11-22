@@ -1,241 +1,11 @@
-// "use client";
-// import { Button } from "@/components/ui/button";
-// import { useCourseModule, useCourse } from "@/hooks/useCourses";
-// import { useUpdateModules } from "@/hooks/useModules";
-// import { Loader, Loader2, FileText, Video } from "lucide-react";
-// import { useParams, useRouter } from "next/navigation";
-
-// export default function ModulePage() {
-//     const router = useRouter();
-//     const params = useParams();
-//     const courseId = Array.isArray(params.id) ? params.id[0] : params.id;
-//     const moduleId = Array.isArray(params.ids) ? params.ids[0] : params.ids;
-  
-
-//     if (typeof courseId !== "string" || typeof moduleId !== "string") {
-//         return (
-//             <div className="flex items-center justify-center min-h-screen bg-gray-50">
-//                 <div className="text-center">
-//                     <p className="text-red-600 mb-4">Invalid course or module ID</p>
-//                 </div>
-//             </div>
-//         );
-//     }
-
-//     const { data, isPending, isError } = useCourseModule(courseId, moduleId);
-//     const { data: courseData } = useCourse(courseId);
-//     const { mutate: updateModule, isPending: isUpdating } = useUpdateModules();
-    
-//     if (isPending) {
-//         return (
-//             <div className="flex items-center justify-center min-h-screen bg-gray-50">
-//                 <div className="text-center">
-//                     <Loader className="animate-spin rounded-full h-12 w-12 mx-auto mb-4"/>
-//                     <p className="text-gray-600">Loading module...</p>
-//                 </div>
-//             </div>
-//         );
-//     }
-
-//     if (isError || !data?.data) {
-//         return (
-//             <div className="flex items-center justify-center min-h-screen bg-gray-50">
-//                 <div className="text-center">
-//                     <p className="text-red-600 mb-4">Error loading module</p>
-//                     <Button 
-//                         onClick={() => router.push(`/dashboard/courses/${courseId}/modules`)}
-//                         variant="outline"
-//                     >
-//                         Back to Course
-//                     </Button>
-//                 </div>
-//             </div>
-//         );
-//     }
-
-//     const module = data.data;
-//     const modules = courseData?.data?.modules || [];
-//     console.log("modules------------", module)
-//     const currentModuleIndex = modules.findIndex((m) => m.id === moduleId);
-//     const nextModule = modules[currentModuleIndex + 1];
-//     const hasNextModule = currentModuleIndex !== -1 && nextModule;
-
-//     const handleToggleComplete = () => {
-//         updateModule({
-//             id: courseId,
-//             ids: moduleId,
-//             data: {
-//                 isCompleted: !module.isCompleted,
-//             }
-//         });
-//     };
-
-//     const handleNextModule = () => {
-//         if (hasNextModule) {
-//             router.push(`/dashboard/courses/${courseId}/modules/${nextModule.id}`);
-//         } else {
-//             router.push(`/dashboard/courses/${courseId}/modules`);
-//         }
-//     };
-
-//     return (
-//         <div className="min-h-screen bg-gray-50 py-8">
-//             <div className="max-w-6xl mx-auto px-4">
-//                 <Button
-//                     onClick={() => router.push(`/dashboard/courses/${courseId}/modules`)}
-//                     variant="ghost"
-//                     className="mb-6"
-//                 >
-//                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-//                     </svg>
-//                     Back to Course
-//                 </Button>
-
-//                 {/* Module Header */}
-//                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-//                     <div className="p-8">
-//                         <div className="flex items-center gap-3 mb-4">
-//                             {module.isCompleted && (
-//                                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-3 py-1 rounded-full">
-//                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-//                                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-//                                     </svg>
-//                                     Completed
-//                                 </span>
-//                             )}
-//                             <span className="text-xs font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-//                                 {module.durationTime}
-//                             </span>
-//                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
-//                                 {module.contentType === "video" ? (
-//                                     <>
-//                                         <Video className="w-3 h-3" />
-//                                         Video
-//                                     </>
-//                                 ) : (
-//                                     <>
-//                                         <FileText className="w-3 h-3" />
-//                                         Text
-//                                     </>
-//                                 )}
-//                             </span>
-//                         </div>
-                        
-//                         <h1 className="text-3xl font-bold text-gray-900 mb-4">{module.title}</h1>
-//                         <p className="text-gray-600 leading-relaxed text-lg">{module.description}</p>
-//                     </div>
-//                 </div>
-
-//                 {/* Module Content */}
-//                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-//                     <div className="p-8">
-//                         <h2 className="text-xl font-bold text-gray-900 mb-6">Module Content</h2>
-                        
-//                         {module.contentType === "video" && module.contentUrl ? (
-//                             <div className="space-y-4">
-//                                 <div className="relative bg-black rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
-//                                     <video 
-//                                         className="absolute top-0 left-0 w-full h-full"
-//                                         controls
-//                                         controlsList="nodownload"
-//                                         preload="metadata"
-//                                     >
-//                                         <source src={module.contentUrl} type="video/mp4" />
-//                                         Your browser does not support the video tag.
-//                                     </video>
-//                                 </div>
-//                                 {module.textContent && (
-//                                     <div className="mt-6">
-//                                         <h3 className="text-lg font-semibold text-gray-900 mb-3">Additional Notes</h3>
-//                                         <div className="prose max-w-none text-gray-600 whitespace-pre-wrap">
-//                                             {module.textContent}
-//                                         </div>
-//                                     </div>
-//                                 )}
-//                             </div>
-//                         ) : module.contentType === "text" && module.textContent ? (
-//                             <div className="prose max-w-none">
-//                                 <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-//                                     {module.textContent}
-//                                 </div>
-//                             </div>
-//                         ) : (
-//                             <div className="text-center py-12 bg-gray-50 rounded-lg">
-//                                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-200 rounded-full mb-4">
-//                                     <FileText className="w-8 h-8 text-gray-400" />
-//                                 </div>
-//                                 <p className="text-gray-600 mb-2">No content available for this module</p>
-//                                 <p className="text-sm text-gray-500">Content will be added soon</p>
-//                             </div>
-//                         )}
-//                     </div>
-//                 </div>
-
-//                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-//                     <div className="p-6 flex items-center justify-between">
-//                         <div className="flex items-center gap-2">
-//                             {isUpdating ? (
-//                                 <Button 
-//                                     className="bg-gray-900 text-white cursor-pointer"
-//                                     disabled
-//                                 >
-//                                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
-//                                     Updating...
-//                                 </Button>
-//                             ) : module.isCompleted ? (
-//                                 <Button
-//                                     variant="outline"
-//                                     className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
-//                                     onClick={handleToggleComplete}
-//                                 >
-//                                     <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-//                                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-//                                     </svg>
-//                                     Mark as Incomplete
-//                                 </Button>
-//                             ) : (
-//                                 <Button 
-//                                     className="bg-gray-900 hover:bg-gray-800 text-white"
-//                                     onClick={handleToggleComplete}
-//                                 >
-//                                     Mark as Complete
-//                                 </Button>
-//                             )}
-//                         </div>
-                        
-//                         <Button 
-//                             variant="outline"
-//                             onClick={handleNextModule}
-//                         >
-//                             {hasNextModule ? (
-//                                 <>
-//                                     Next Module
-//                                     <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-//                                     </svg>
-//                                 </>
-//                             ) : (
-//                                 "Back to Course"
-//                             )}
-//                         </Button>
-//                     </div>
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// }
-
-
-
-
 "use client";
 import { Button } from "@/components/ui/button";
 import { useCourseModule, useCourse } from "@/hooks/useCourses";
 import { useUpdateModules } from "@/hooks/useModules";
-import { Loader, Loader2, FileText, Video } from "lucide-react";
+import { Loader, Loader2, FileText, Video, WifiOff, CheckCircle2, Cloud } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
+import { getFromCache, saveToCache } from "@/utils/db";
 
 export default function ModulePage() {
     const router = useRouter();
@@ -246,9 +16,47 @@ export default function ModulePage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [videoProgress, setVideoProgress] = useState(0);
     const [hasAutoCompleted, setHasAutoCompleted] = useState(false);
+    const [isOnline, setIsOnline] = useState(true);
+    const [showSyncNotification, setShowSyncNotification] = useState(false);
+    const [optimisticCompleted, setOptimisticCompleted] = useState(false);
+    const [cachedModuleData, setCachedModuleData] = useState<any>(null);
+    const [cachedCourseData, setCachedCourseData] = useState<any>(null);
+    const [hasLoadedCache, setHasLoadedCache] = useState(false);
     
-    // Threshold percentage for auto-completion (80% = 0.8)
     const AUTO_COMPLETE_THRESHOLD = 0.8;
+
+    // Load cache on mount
+    useEffect(() => {
+        const cachedModule = getFromCache<any>(`module-${courseId}-${moduleId}`);
+        const cachedCourse = getFromCache<any>(`course-${courseId}`);
+        
+        if (cachedModule) {
+            setCachedModuleData(cachedModule);
+        }
+        if (cachedCourse) {
+            setCachedCourseData(cachedCourse);
+        }
+        setHasLoadedCache(true);
+    }, [courseId, moduleId]);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            setShowSyncNotification(true);
+            setTimeout(() => setShowSyncNotification(false), 5000);
+        };
+        const handleOffline = () => setIsOnline(false);
+        
+        setIsOnline(navigator.onLine);
+        
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     if (typeof courseId !== "string" || typeof moduleId !== "string") {
         return (
@@ -264,9 +72,36 @@ export default function ModulePage() {
     const { data: courseData } = useCourse(courseId);
     const { mutate: updateModule, isPending: isUpdating } = useUpdateModules();
     
+    // Update cache when online data arrives
+    useEffect(() => {
+        if (data?.data && isOnline) {
+            saveToCache(`module-${courseId}-${moduleId}`, data);
+            setCachedModuleData(data);
+            console.log("[ModulePage] Cached module data for offline use");
+        }
+    }, [data, isOnline, courseId, moduleId]);
+
+    // Update course cache when online data arrives
+    useEffect(() => {
+        if (courseData?.data && isOnline) {
+            saveToCache(`course-${courseId}`, courseData);
+            setCachedCourseData(courseData);
+            console.log("[ModulePage] Cached course data for offline use");
+        }
+    }, [courseData, isOnline, courseId]);
+    
+    // Reset optimistic state when data changes (online sync)
+    useEffect(() => {
+        if (data?.data?.isCompleted !== undefined && isOnline) {
+            setOptimisticCompleted(false);
+        }
+    }, [data?.data?.isCompleted, isOnline]);
+    
     useEffect(() => {
         const video = videoRef.current;
-        if (!video || data?.data?.contentType !== "video") return;
+        const displayData = isOnline ? data : cachedModuleData;
+        
+        if (!video || displayData?.data?.contentType !== "video") return;
 
         const handleTimeUpdate = () => {
             const currentTime = video.currentTime;
@@ -280,7 +115,7 @@ export default function ModulePage() {
                 if (
                     progress >= AUTO_COMPLETE_THRESHOLD && 
                     !hasAutoCompleted && 
-                    !data.data.isCompleted
+                    !displayData.data.isCompleted
                 ) {
                     setHasAutoCompleted(true);
                     updateModule({
@@ -295,7 +130,6 @@ export default function ModulePage() {
         };
 
         const handleLoadedMetadata = () => {
-            // Reset auto-complete flag when video metadata loads
             setHasAutoCompleted(false);
         };
 
@@ -306,24 +140,32 @@ export default function ModulePage() {
             video.removeEventListener("timeupdate", handleTimeUpdate);
             video.removeEventListener("loadedmetadata", handleLoadedMetadata);
         };
-    }, [data?.data, courseId, moduleId, updateModule, hasAutoCompleted]);
+    }, [data?.data, cachedModuleData, courseId, moduleId, updateModule, hasAutoCompleted, isOnline]);
     
-    if (isPending) {
+    // Use cached data when offline, API data when online
+    const displayModuleData = isOnline ? data : cachedModuleData;
+    const displayCourseData = isOnline ? courseData : cachedCourseData;
+    const isLoadingOrError = isOnline ? isPending : !hasLoadedCache;
+    const hasError = isOnline ? isError : !cachedModuleData;
+    
+    if (isLoadingOrError) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="text-center">
                     <Loader className="animate-spin rounded-full h-12 w-12 mx-auto mb-4"/>
-                    <p className="text-gray-600">Loading module...</p>
+                    <p className="text-gray-600">{isOnline ? 'Loading module...' : 'Loading from cache...'}</p>
                 </div>
             </div>
         );
     }
 
-    if (isError || !data?.data) {
+    if (hasError || !displayModuleData?.data) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="text-center">
-                    <p className="text-red-600 mb-4">Error loading module</p>
+                    <p className="text-red-600 mb-4">
+                        {isOnline ? 'Error loading module' : 'No cached data available offline'}
+                    </p>
                     <Button 
                         onClick={() => router.push(`/dashboard/courses/${courseId}/modules`)}
                         variant="outline"
@@ -335,18 +177,52 @@ export default function ModulePage() {
         );
     }
 
-    const module = data.data;
-    const modules = courseData?.data?.modules || [];
-    const currentModuleIndex = modules.findIndex((m) => m.id === moduleId);
+    const module = displayModuleData.data;
+    const modules = displayCourseData?.data?.modules || [];
+    const currentModuleIndex = modules.findIndex((m: { id: string; }) => m.id === moduleId);
     const nextModule = modules[currentModuleIndex + 1];
     const hasNextModule = currentModuleIndex !== -1 && nextModule;
 
+    // Use optimistic state when offline, actual state when online
+    const isModuleCompleted = isOnline ? module.isCompleted : (optimisticCompleted || module.isCompleted);
+
     const handleToggleComplete = () => {
+        // Set optimistic UI update for offline
+        if (!isOnline) {
+            setOptimisticCompleted(!isModuleCompleted);
+            
+            // Update cached module data
+            const updatedCachedModule = {
+                ...cachedModuleData,
+                data: {
+                    ...cachedModuleData.data,
+                    isCompleted: !isModuleCompleted
+                }
+            };
+            setCachedModuleData(updatedCachedModule);
+            saveToCache(`module-${courseId}-${moduleId}`, updatedCachedModule);
+            
+            // Update cached course data modules
+            if (cachedCourseData?.data?.modules) {
+                const updatedCachedCourse = {
+                    ...cachedCourseData,
+                    data: {
+                        ...cachedCourseData.data,
+                        modules: cachedCourseData.data.modules.map((m: any) =>
+                            m.id === moduleId ? { ...m, isCompleted: !isModuleCompleted } : m
+                        )
+                    }
+                };
+                setCachedCourseData(updatedCachedCourse);
+                saveToCache(`course-${courseId}`, updatedCachedCourse);
+            }
+        }
+        
         updateModule({
             id: courseId,
             ids: moduleId,
             data: {
-                isCompleted: !module.isCompleted,
+                isCompleted: !isModuleCompleted,
             }
         });
     };
@@ -359,15 +235,40 @@ export default function ModulePage() {
         }
     };
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-6xl mx-auto px-4">
+                {/* Sync Notification */}
+                {showSyncNotification && (
+                    <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 animate-fade-in">
+                        <div className="flex items-center gap-3">
+                            <Cloud className="w-5 h-5 text-green-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-medium text-green-900">
+                                    Back online! Syncing your progress...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Offline Indicator */}
+                {!isOnline && (
+                    <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-center gap-3">
+                            <WifiOff className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-medium text-yellow-900">
+                                    You're currently offline
+                                </p>
+                                <p className="text-xs text-yellow-700 mt-0.5">
+                                    Your progress will be saved and synced when you're back online.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <Button
                     onClick={() => router.push(`/dashboard/courses/${courseId}/modules`)}
                     variant="ghost"
@@ -383,11 +284,9 @@ export default function ModulePage() {
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
                     <div className="p-8">
                         <div className="flex items-center gap-3 mb-4">
-                            {module.isCompleted && (
+                            {isModuleCompleted && (
                                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-3 py-1 rounded-full">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                    </svg>
+                                    <CheckCircle2 className="w-4 h-4" />
                                     Completed
                                 </span>
                             )}
@@ -407,6 +306,12 @@ export default function ModulePage() {
                                     </>
                                 )}
                             </span>
+                            {!isOnline && (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 px-3 py-1 rounded-full">
+                                    <WifiOff className="w-3 h-3" />
+                                    Offline Mode
+                                </span>
+                            )}
                         </div>
                         
                         <h1 className="text-3xl font-bold text-gray-900 mb-4">{module.title}</h1>
@@ -451,12 +356,11 @@ export default function ModulePage() {
                                                 style={{ width: `${videoProgress * 100}%` }}
                                             />
                                         </div>
-                                        {videoProgress >= AUTO_COMPLETE_THRESHOLD && !module.isCompleted && (
+                                        {videoProgress >= AUTO_COMPLETE_THRESHOLD && !isModuleCompleted && (
                                             <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                </svg>
+                                                <CheckCircle2 className="w-4 h-4" />
                                                 Module automatically marked as complete!
+                                                {!isOnline && " (Will sync when online)"}
                                             </p>
                                         )}
                                     </div>
@@ -489,6 +393,7 @@ export default function ModulePage() {
                     </div>
                 </div>
 
+                {/* Action Buttons */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="p-6 flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -498,26 +403,41 @@ export default function ModulePage() {
                                     disabled
                                 >
                                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                    Updating...
+                                    {isOnline ? 'Updating...' : 'Saving offline...'}
                                 </Button>
-                            ) : module.isCompleted ? (
-                                <Button
-                                    variant="outline"
-                                    className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
-                                    onClick={handleToggleComplete}
-                                >
-                                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                    </svg>
-                                    Mark as Incomplete
-                                </Button>
+                            ) : isModuleCompleted ? (
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        variant="outline"
+                                        className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                                        onClick={handleToggleComplete}
+                                    >
+                                        <CheckCircle2 className="w-5 h-5 mr-2" />
+                                        Mark as Incomplete
+                                    </Button>
+                                    {!isOnline && (
+                                        <span className="text-xs text-yellow-600 flex items-center gap-1">
+                                            <WifiOff className="w-3 h-3" />
+                                            Changes will sync online
+                                        </span>
+                                    )}
+                                </div>
                             ) : (
-                                <Button 
-                                    className="bg-gray-900 hover:bg-gray-800 text-white"
-                                    onClick={handleToggleComplete}
-                                >
-                                    Mark as Complete
-                                </Button>
+                                <div className="flex items-center gap-3">
+                                    <Button 
+                                        className="bg-gray-900 hover:bg-gray-800 text-white"
+                                        onClick={handleToggleComplete}
+                                    >
+                                        <CheckCircle2 className="w-5 h-5 mr-2" />
+                                        Mark as Complete
+                                    </Button>
+                                    {!isOnline && (
+                                        <span className="text-xs text-yellow-600 flex items-center gap-1">
+                                            <WifiOff className="w-3 h-3" />
+                                            Changes will sync online
+                                        </span>
+                                    )}
+                                </div>
                             )}
                         </div>
                         
@@ -542,5 +462,3 @@ export default function ModulePage() {
         </div>
     );
 }
-
-

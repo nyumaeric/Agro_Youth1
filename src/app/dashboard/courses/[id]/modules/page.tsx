@@ -3,10 +3,11 @@ import Certificate from "@/app/components/Certificate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCertificate, useClaimCertificate, useCourse } from "@/hooks/useCourses";
-import { Award, Loader, Verified } from "lucide-react";
+import { Award, Loader, Verified, WifiOff, Cloud } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getFromCache, saveToCache } from "@/utils/db";
 
 function CoursePage() {
     const params = useParams();
@@ -18,23 +19,66 @@ function CoursePage() {
     const { mutate: claimCertificate, isPending: isClaimingCertificate } = useClaimCertificate();
     
     const [showCertificate, setShowCertificate] = useState(false);
+    const [isOnline, setIsOnline] = useState(true);
+    const [showSyncNotification, setShowSyncNotification] = useState(false);
+    const [cachedCourseData, setCachedCourseData] = useState<any>(null);
+    const [hasLoadedCache, setHasLoadedCache] = useState(false);
     
-    if (isPending) {
+    useEffect(() => {
+        const cached = getFromCache<any>(`course-${courseId}`);
+        if (cached) {
+            setCachedCourseData(cached);
+        }
+        setHasLoadedCache(true);
+    }, [courseId]);
+    
+    useEffect(() => {
+        if (data?.data && isOnline) {
+            saveToCache(`course-${courseId}`, data);
+        }
+    }, [data, isOnline, courseId]);
+    
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            setShowSyncNotification(true);
+            setTimeout(() => setShowSyncNotification(false), 5000);
+        };
+        const handleOffline = () => setIsOnline(false);
+        
+        setIsOnline(navigator.onLine);
+        
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+    
+    const displayData = isOnline ? data : cachedCourseData;
+    const isLoadingOrError = isOnline ? isPending : !hasLoadedCache;
+    const hasError = isOnline ? isError : !cachedCourseData;
+    
+    if (isLoadingOrError) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="text-center">
                     <Loader className="animate-spin rounded-full h-12 w-12 mx-auto mb-4"/>
-                    <p className="text-gray-600">Loading course...</p>
+                    <p className="text-gray-600">{isOnline ? 'Loading course...' : 'Loading from cache...'}</p>
                 </div>
             </div>
         );
     }
 
-    if (isError || !data?.data) {
+    if (hasError || !displayData?.data) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="text-center">
-                    <p className="text-red-600 mb-4">Error loading course</p>
+                    <p className="text-red-600 mb-4">
+                        {isOnline ? 'Error loading course' : 'No cached data available offline'}
+                    </p>
                     <button 
                         onClick={() => window.location.reload()} 
                         className="text-sm text-gray-600 hover:text-gray-900 underline"
@@ -46,7 +90,7 @@ function CoursePage() {
         );
     }
 
-    const course = data.data;
+    const course = displayData.data;
     const modules = course.modules || [];
     const progress = course.progress || {
         completedModules: 0,
@@ -57,21 +101,16 @@ function CoursePage() {
 
     const isCourseCompleted = progress.isCompleted;
     const hasCertificate = certificateData?.data && !certificateData.data.canClaim;
-    const canClaimCertificate = isCourseCompleted && !hasCertificate;
-
-    // const handleClaimCertificate = () => {
-    //     claimCertificate(courseId as string, {
-    //         onSuccess: () => {
-    //             refetchCertificate();
-    //             setShowCertificate(true);
-    //         }
-    //     });
-    // };
+    const canClaimCertificate = isCourseCompleted && !hasCertificate && isOnline;
+    
     const handleClaimCertificate = () => {
+        if (!isOnline) {
+            alert('Cannot claim certificate while offline. Please connect to the internet.');
+            return;
+        }
+        
         claimCertificate(courseId as string, {
             onSuccess: (data) => {
-                // Certificate data is already optimistically updated
-                // Just show the certificate modal
                 setTimeout(() => {
                     setShowCertificate(true);
                 }, 100);
@@ -86,6 +125,36 @@ function CoursePage() {
     return (
         <div className="min-h-screen bg-gray-50 py-12">
             <div className="max-w-6xl mx-auto px-4">
+                {/* Sync Notification */}
+                {showSyncNotification && (
+                    <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 animate-fade-in">
+                        <div className="flex items-center gap-3">
+                            <Cloud className="w-5 h-5 text-green-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-medium text-green-900">
+                                    Back online! Course data updated...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {!isOnline && (
+                    <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-center gap-3">
+                            <WifiOff className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-medium text-yellow-900">
+                                    You're currently offline
+                                </p>
+                                <p className="text-xs text-yellow-700 mt-0.5">
+                                    Viewing cached course data. You can continue learning. Changes will sync when you're back online.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 {showCertificate && hasCertificate && (
                     <Certificate
                         certificate={certificateData.data}
@@ -98,8 +167,9 @@ function CoursePage() {
                     <Button 
                         onClick={() => router.push(`/dashboard/courses/${courseId}/posts`)} 
                         className="bg-slate-900 py-2 px-4"
+                        disabled={!isOnline}
                     >
-                        Start Discussion
+                        {isOnline ? 'Start Discussion' : 'Discussion (Online Only)'}
                     </Button>
                 </div>
 
@@ -113,6 +183,12 @@ function CoursePage() {
                             <span className="text-xs font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
                                 {course.category}
                             </span>
+                            {!isOnline && (
+                                <span className="text-xs font-medium text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full flex items-center gap-1">
+                                    <WifiOff className="w-3 h-3" />
+                                    Offline Mode
+                                </span>
+                            )}
                         </div>
                         
                         <div className="flex items-center gap-2 mb-3">
@@ -163,12 +239,17 @@ function CoursePage() {
                                         <p className="text-sm text-gray-600">
                                             You've successfully completed all modules in this course.
                                         </p>
+                                        {!isOnline && (
+                                            <p className="text-xs text-yellow-600 mt-2">
+                                                Connect to the internet to claim your certificate.
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex-shrink-0">
-                                    {canClaimCertificate ? (
+                                        {canClaimCertificate ? (
                                             <Button
                                                 onClick={handleClaimCertificate}
-                                                disabled={isClaimingCertificate}
+                                                disabled={isClaimingCertificate || !isOnline}
                                                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md disabled:opacity-50"
                                             >
                                                 {isClaimingCertificate ? (
@@ -198,6 +279,14 @@ function CoursePage() {
                                             >
                                                 <Loader className="w-5 h-5 mr-2 animate-spin" />
                                                 Processing...
+                                            </Button>
+                                        ) : !isOnline ? (
+                                            <Button
+                                                disabled
+                                                className="bg-gray-400 text-white shadow-md opacity-50"
+                                            >
+                                                <WifiOff className="w-5 h-5 mr-2" />
+                                                Offline
                                             </Button>
                                         ) : null}
                                     </div>
@@ -300,4 +389,5 @@ function CoursePage() {
         </div>
     );
 }
-export default CoursePage
+
+export default CoursePage;

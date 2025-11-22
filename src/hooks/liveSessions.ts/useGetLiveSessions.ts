@@ -71,7 +71,6 @@ export const useAllLiveSessions = () => {
 
       console.log(`Fetching all live sessions, online: ${isOnline}`);
 
-      // If offline, return cached data
       if (!isOnline) {
         console.log('🔴 OFFLINE MODE - Using cached all live sessions');
         return cached || [];
