@@ -436,6 +436,7 @@ const PRECACHE_URLS = [
   '/dashboard/projects',
   '/dashboard/investor/review-applications',
   '/dashboard/profile',
+  '/dashboard/allapplications',
   '/apply',
 ];
 
