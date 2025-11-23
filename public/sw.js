@@ -907,7 +907,6 @@ self.addEventListener('message', (event) => {
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            console.log('[ServiceWorker] Deleting cache:', cacheName);
             return caches.delete(cacheName);
           })
         );
