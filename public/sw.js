@@ -415,16 +415,28 @@
 // });
 
 
-const CACHE_VERSION = 'v1.0.8';
+
+const CACHE_VERSION = 'v1.0.7';
 const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-cache-${CACHE_VERSION}`;
-const TIMEOUT_MS = 3000;
+const TIMEOUT_MS = 2000;
 
-// Only precache the root HTML and manifest
-// All other routes will use the same HTML shell
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
+  '/market',
+  '/investors',
+  '/courses',
+  '/dashboard',
+  '/dashboard/courses',
+  '/dashboard/courses/enrolled',
+  '/dashboard/certificates',
+  '/dashboard/products',
+  '/dashboard/livesessions',
+  '/dashboard/projects',
+  '/dashboard/investor/review-applications',
+  '/dashboard/profile',
+  '/apply',
 ];
 
 const NEVER_CACHE_ENDPOINTS = [
@@ -441,11 +453,13 @@ const NEVER_CACHE_ENDPOINTS = [
 // Helper: Check if URL should bypass cache
 function shouldBypassCache(url) {
   const pathname = url.pathname;
+  
+  // Never cache POST, PUT, PATCH, DELETE requests
   return NEVER_CACHE_ENDPOINTS.some(endpoint => pathname.startsWith(endpoint));
 }
 
 self.addEventListener('install', (event) => {
-  console.log('[ServiceWorker] Installing v1.0.8...');
+  console.log('[ServiceWorker] Installing v1.0.7...');
   
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -455,15 +469,12 @@ self.addEventListener('install', (event) => {
           console.error('[ServiceWorker] Precache failed:', error);
         });
       })
-      .then(() => {
-        console.log('[ServiceWorker] Install complete, skipping waiting');
-        return self.skipWaiting();
-      })
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[ServiceWorker] Activating v1.0.8...');
+  console.log('[ServiceWorker] Activating v1.0.7...');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -492,40 +503,6 @@ function fetchWithTimeout(request, timeout = TIMEOUT_MS) {
   ]);
 }
 
-// Helper: Get app shell HTML for navigation
-async function getAppShellHTML(request) {
-  // Try to get the specific cached route first
-  let cachedResponse = await caches.match(request);
-  if (cachedResponse) {
-    console.log('[ServiceWorker] Found cached HTML for:', request.url);
-    return cachedResponse;
-  }
-
-  // Fall back to root HTML (app shell)
-  // This works because Next.js is a SPA - all routes use the same HTML
-  cachedResponse = await caches.match('/');
-  if (cachedResponse) {
-    console.log('[ServiceWorker] Serving app shell (/) for:', request.url);
-    return cachedResponse;
-  }
-
-  // Try runtime cache
-  const runtimeCache = await caches.open(RUNTIME_CACHE);
-  const runtimeKeys = await runtimeCache.keys();
-  
-  // Find any cached HTML document
-  for (const cachedRequest of runtimeKeys) {
-    const response = await runtimeCache.match(cachedRequest);
-    if (response && response.headers.get('content-type')?.includes('text/html')) {
-      console.log('[ServiceWorker] Serving cached HTML from runtime cache');
-      return response;
-    }
-  }
-
-  console.error('[ServiceWorker] No app shell found in any cache!');
-  return null;
-}
-
 // Fetch event - optimized for instant offline navigation
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -539,7 +516,7 @@ self.addEventListener('fetch', (event) => {
   // Skip Next.js internals
   if (
     url.pathname.startsWith('/__nextjs') ||
-    url.pathname.includes('/api/auth/session') ||
+    url.pathname.includes('/api/auth/') ||
     url.pathname === '/api/revalidate'
   ) {
     return;
@@ -548,12 +525,14 @@ self.addEventListener('fetch', (event) => {
   // CRITICAL: Never cache mutation requests or file uploads
   if (shouldBypassCache(url)) {
     console.log('[ServiceWorker] Bypassing cache for:', url.pathname);
+    // Let the request go straight to network, no caching
     return;
   }
 
   // CRITICAL: Never cache non-GET requests (POST, PUT, DELETE, PATCH)
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     console.log('[ServiceWorker] Bypassing cache for', request.method, 'request:', url.pathname);
+    // Let the request go straight to network
     return;
   }
 
@@ -584,28 +563,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle _next/data (RSC data for App Router) - CRITICAL FOR OFFLINE
+  // Handle _next/data (RSC data for App Router)
   if (url.pathname.startsWith('/_next/data/') || url.searchParams.has('_rsc')) {
     event.respondWith(
       (async () => {
-        // Check cache first
         const cachedResponse = await caches.match(request);
         
-        // If offline, use cache immediately
-        if (!navigator.onLine) {
-          if (cachedResponse) {
-            console.log('[ServiceWorker] OFFLINE - Serving RSC data from cache');
-            return cachedResponse;
-          }
-          // Return empty data if no cache
-          console.log('[ServiceWorker] OFFLINE - No cached data, returning null');
-          return new Response('null', {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
+        if (!navigator.onLine && cachedResponse) {
+          return cachedResponse;
         }
         
-        // Online - try network with timeout
         try {
           const response = await fetchWithTimeout(request, TIMEOUT_MS);
           if (response.ok) {
@@ -616,9 +583,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         } catch (error) {
-          // Network failed - use cache
           if (cachedResponse) {
-            console.log('[ServiceWorker] Network failed, using cached RSC data');
             return cachedResponse;
           }
           return new Response('null', {
@@ -631,53 +596,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle navigation requests (pages) - UNIVERSAL APP SHELL
+  // Handle navigation requests (pages)
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        const pathname = url.pathname;
-        console.log('[ServiceWorker] Navigation request for:', pathname);
-        
-        // If offline, serve app shell immediately
         if (!navigator.onLine) {
-          console.log('[ServiceWorker] OFFLINE - Getting app shell');
-          const appShell = await getAppShellHTML(request);
+          console.log('[ServiceWorker] OFFLINE - Serving app shell for:', url.pathname);
           
-          if (appShell) {
-            return appShell;
+          let cachedResponse = await caches.match(request);
+          
+          if (!cachedResponse) {
+            cachedResponse = await caches.match('/');
           }
           
-          // Absolute fallback
-          return new Response(`
-            <!DOCTYPE html>
-            <html>
-              <head><title>Offline</title></head>
-              <body>
-                <h1>You're Offline</h1>
-                <p>This page isn't available offline yet. Please check your connection.</p>
-              </body>
-            </html>
-          `, {
-            status: 503,
-            headers: { 'Content-Type': 'text/html' }
-          });
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          return new Response('App not available offline', { status: 503 });
         }
         
-        // Online - try network first
         try {
-          console.log('[ServiceWorker] ONLINE - Fetching from network:', pathname);
           const networkResponse = await fetchWithTimeout(request, TIMEOUT_MS);
           
-          // Cache successful HTML responses
-          if (networkResponse.ok && networkResponse.headers.get('content-type')?.includes('text/html')) {
+          if (networkResponse.ok) {
             const responseToCache = networkResponse.clone();
-            
             caches.open(RUNTIME_CACHE).then((cache) => {
-              console.log('[ServiceWorker] Caching HTML for:', pathname);
               cache.put(request, responseToCache);
               
-              // Also cache as root if it's homepage
-              if (pathname === '/' || pathname === '') {
+              if (url.pathname === '/' || url.pathname === '') {
                 cache.put('/', responseToCache.clone());
               }
             });
@@ -685,19 +632,17 @@ self.addEventListener('fetch', (event) => {
           
           return networkResponse;
         } catch (error) {
-          // Network failed - serve from cache
-          console.log('[ServiceWorker] Network failed for:', pathname, '- using cache');
+          let cachedResponse = await caches.match(request);
           
-          const appShell = await getAppShellHTML(request);
-          
-          if (appShell) {
-            return appShell;
+          if (!cachedResponse) {
+            cachedResponse = await caches.match('/');
           }
           
-          return new Response('Page not available offline', { 
-            status: 503,
-            headers: { 'Content-Type': 'text/html' }
-          });
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          return new Response('App not available offline', { status: 503 });
         }
       })()
     );
@@ -708,17 +653,15 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       (async () => {
-        // Never cache non-GET requests
+        // Only cache GET requests
         if (request.method !== 'GET') {
           console.log('[ServiceWorker] Not caching', request.method, 'API request');
           return fetch(request);
         }
 
-        // If offline, check cache
         if (!navigator.onLine) {
           const cachedResponse = await caches.match(request);
           if (cachedResponse) {
-            console.log('[ServiceWorker] OFFLINE - Serving API from cache:', url.pathname);
             return cachedResponse;
           }
           return new Response(
@@ -730,11 +673,9 @@ self.addEventListener('fetch', (event) => {
           );
         }
         
-        // Online - try network
         try {
           const response = await fetchWithTimeout(request, TIMEOUT_MS);
           
-          // Cache successful GET responses
           if (response.ok) {
             const responseToCache = response.clone();
             caches.open(RUNTIME_CACHE).then((cache) => {
@@ -744,10 +685,8 @@ self.addEventListener('fetch', (event) => {
           
           return response;
         } catch (error) {
-          // Network failed - try cache
           const cachedResponse = await caches.match(request);
           if (cachedResponse) {
-            console.log('[ServiceWorker] Network failed, using cached API response');
             return cachedResponse;
           }
           
@@ -793,7 +732,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle CSS and JS - Cache First with background update
+  // Handle CSS and JS - Cache First
   if (
     request.destination === 'style' ||
     request.destination === 'script' ||
@@ -804,7 +743,6 @@ self.addEventListener('fetch', (event) => {
         const cachedResponse = await caches.match(request);
         
         if (cachedResponse) {
-          // Serve cache immediately, update in background if online
           if (navigator.onLine) {
             fetch(request).then((response) => {
               if (response.ok) {
@@ -818,7 +756,6 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
         
-        // No cache - fetch from network
         const response = await fetch(request);
         if (response.ok) {
           const responseToCache = response.clone();
@@ -832,7 +769,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle fonts - Cache First
+  // Handle fonts
   if (
     request.destination === 'font' ||
     url.pathname.match(/\.(woff|woff2|ttf|otf|eot)$/i)
@@ -886,12 +823,10 @@ self.addEventListener('fetch', (event) => {
 // Listen for messages from the client
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[ServiceWorker] Received SKIP_WAITING message');
     self.skipWaiting();
   }
   
   if (event.data && event.data.type === 'CACHE_URLS') {
-    console.log('[ServiceWorker] Caching URLs:', event.data.payload);
     event.waitUntil(
       caches.open(RUNTIME_CACHE).then((cache) => {
         return cache.addAll(event.data.payload).catch((error) => {
@@ -902,13 +837,10 @@ self.addEventListener('message', (event) => {
   }
   
   if (event.data && event.data.type === 'CLEAR_CACHE') {
-    console.log('[ServiceWorker] Clearing all caches');
     event.waitUntil(
       caches.keys().then((cacheNames) => {
         return Promise.all(
-          cacheNames.map((cacheName) => {
-            return caches.delete(cacheName);
-          })
+          cacheNames.map((cacheName) => caches.delete(cacheName))
         );
       })
     );
