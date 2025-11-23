@@ -691,7 +691,7 @@ const Courses: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Offline Banner */}
         {!isOnline && (
-          <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-6 rounded-lg flex items-center gap-3">
+          <div className="bg-orange-100 border-l-4 border-orange-500 text-yellow-600 p-4 mb-6 rounded-lg flex items-center gap-3">
             <WifiOff className="h-5 w-5 flex-shrink-0" />
             <div>
               <p className="font-semibold">You're currently offline</p>

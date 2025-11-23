@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     const expectedImpact = formData.get('expectedImpact') as string;
     const projectId = formData.get('projectId') as string;  
     const email = formData.get('email') as string;
-
+    console.log("====================", )
     // Validate required fields
     if (!projectTitle || !projectDescription || !projectGoals || !budgetAmount || !duration || !expectedImpact || !projectId || !email) {
       return sendResponse(400, null, 'Missing required fields');
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       await writeFile(filepath, buffer);
       
       // FIX: This was the problematic line - use parentheses, not backticks
-      uploadedFiles.push(`/uploads/certificates/${filename}`);
+      uploadedFiles.push('/uploads/certificates/' + filename);
     }
 
     // Insert into database

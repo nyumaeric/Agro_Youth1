@@ -139,7 +139,8 @@ export function NavUser({ userinfo }: NavUserProps) {
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.fullName}</span>
                   <span className="text-muted-foreground truncate text-xs">
-                    {user.role}
+                    <span className="font-semibold">Occupation: </span>
+                    <span className="text-green-700 italic underline">{user.userType?.toUpperCase()}</span>
                   </span>
                 </div>
               </div>
