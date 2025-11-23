@@ -428,10 +428,10 @@ const PRECACHE_URLS = [
   '/investors',
   '/courses',
   '/dashboard',
+  '/dashboard/*',
   '/apply',
 ];
 
-// Endpoints that should NEVER be cached (file uploads, mutations)
 const NEVER_CACHE_ENDPOINTS = [
   '/api/donations/apply',
   '/api/certificates',
