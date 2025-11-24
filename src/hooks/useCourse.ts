@@ -67,9 +67,7 @@ export const useCoursesWithOffline = () => {
       
       const cachedPage = getFromCache<CourseResponse>(cacheKey);
       const cachedAllCourses = getFromCache<Course[]>(allCoursesKey) || [];
-      
-      console.log(`Fetching courses page ${pageParam}, online: ${isOnline}, cached courses: ${cachedAllCourses.length}`);
-      
+            
       if (!isOnline) {
         if (cachedPage) {
           return cachedPage;

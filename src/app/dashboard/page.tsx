@@ -1039,7 +1039,7 @@ const Dashboard: React.FC = () => {
                   <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                   <p>{!isOnline ? 'No cached applications' : 'No applications yet'}</p>
                   {isOnline && (
-                    <Link href="/dashboard/apply">
+                    <Link href="/apply">
                       <Button className="mt-4 bg-green-600 hover:bg-green-700">
                         Submit Application
                       </Button>

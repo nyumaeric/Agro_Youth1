@@ -99,13 +99,202 @@ export const POST = async (req: NextRequest) => {
 
 type CountResult = { count: number };
 
+// export const GET = async (req: NextRequest) => {
+//   try {
+//     const userId = await getUserIdFromSession();
+//     if (!userId) {
+//       return sendResponse(401, null, "Unauthorized");
+//     }
+
+//     const pagination = await getPaginationParams(req);
+//     let { page, offset } = pagination;
+//     const { limit } = pagination;
+
+//     const totalResult = await db.execute<CountResult>(
+//       sql`SELECT COUNT(*)::int AS count FROM ${course}`
+//     );
+
+//     const totalCount = totalResult.rows[0]?.count ?? 0;
+//     const totalPages = Math.max(Math.ceil(totalCount / limit), 1);
+
+//     if (page > totalPages) {
+//       page = 1;
+//       offset = 0;
+//     }
+
+//     const paginatedCourses = await db
+//       .select({
+//         id: course.id,
+//         createdId: course.createdId,
+//         title: course.title,
+//         description: course.description,
+//         timeToComplete: course.timeToComplete,
+//         level: course.level,
+//         category: course.category,
+//         language: course.language,
+//         contentType: course.contentType,
+//         contentUrl: course.contentUrl,
+//         textContent: course.textContent,
+//         isDownloadable: course.isDownloadable,
+//         createdAt: course.createdAt,
+//         updatedAt: course.updatedAt,
+//         moduleCount: sql<number>`COUNT(DISTINCT ${courseModules.id})::int`.as('module_count'),
+//         isCompleted: sql<boolean>`COALESCE(${courseProgress.isCompleted}, false)`.as('is_completed'),
+//         progressPercentage: sql<number>`COALESCE(${courseProgress.progressPercentage}, 0)`.as('progress_percentage'),
+//         completedModules: sql<number>`COALESCE(${courseProgress.completedModules}, 0)`.as('completed_modules'),
+//         totalModules: sql<number>`COALESCE(${courseProgress.totalModules}, 0)`.as('total_modules'),
+//       })
+//       .from(course)
+//       .leftJoin(courseModules, eq(course.id, courseModules.courseId))
+//       .leftJoin(
+//         courseProgress,
+//         and(
+//           eq(courseProgress.courseId, course.id),
+//           eq(courseProgress.userId, userId)
+//         )
+//       )
+//       .groupBy(
+//         course.id,
+//         courseProgress.isCompleted,
+//         courseProgress.progressPercentage,
+//         courseProgress.completedModules,
+//         courseProgress.totalModules
+//       )
+//       .limit(limit)
+//       .offset(offset)
+//       .orderBy(desc(course.createdAt));
+
+//     const coursesWithModules = await Promise.all(
+//       paginatedCourses.map(async (courseItem) => {
+//         const allModules = await db
+//           .select({
+//             id: courseModules.id,
+//             courseId: courseModules.courseId,
+//           })
+//           .from(courseModules)
+//           .where(eq(courseModules.courseId, courseItem.id));
+
+//         const totalModules = allModules.length;
+
+//         const completedModulesResult = await db
+//           .select({ count: count() })
+//           .from(courseModuleProgress)
+//           .where(
+//             and(
+//               eq(courseModuleProgress.courseId, courseItem.id),
+//               eq(courseModuleProgress.userId, userId),
+//               eq(courseModuleProgress.isCompleted, true)
+//             )
+//           );
+
+//         const completedModulesCount = completedModulesResult[0]?.count || 0;
+
+//         const modules = await db
+//           .select({
+//             id: courseModules.id,
+//             title: courseModules.title,
+//             description: courseModules.description,
+//             content: courseModules.textContent,
+//             contentType: courseModules.contentType,
+//             contentUrl: courseModules.contentUrl,
+//             durationTime: courseModules.durationTime,
+//             isCompleted: sql<boolean>`COALESCE(${courseModuleProgress.isCompleted}, false)`.as('is_completed'),
+//             completedAt: courseModuleProgress.completedAt,
+//             createdAt: courseModules.createdAt,
+//             updatedAt: courseModules.updatedAt,
+//           })
+//           .from(courseModules)
+//           .leftJoin(
+//             courseModuleProgress,
+//             and(
+//               eq(courseModules.id, courseModuleProgress.moduleId),
+//               eq(courseModuleProgress.userId, userId)
+//             )
+//           )
+//           .where(eq(courseModules.courseId, courseItem.id))
+//           .orderBy(courseModules.createdAt);
+
+//         const progressPercentage = totalModules > 0 
+//           ? Math.round((completedModulesCount / totalModules) * 100) 
+//           : 0;
+
+//         const isCourseCompleted = totalModules > 0 && completedModulesCount === totalModules;
+
+//         const [existingProgress] = await db
+//           .select()
+//           .from(courseProgress)
+//           .where(
+//             and(
+//               eq(courseProgress.courseId, courseItem.id),
+//               eq(courseProgress.userId, userId)
+//             )
+//           )
+//           .limit(1);
+
+//         if (existingProgress) {
+//           await db
+//             .update(courseProgress)
+//             .set({
+//               completedModules: completedModulesCount,
+//               totalModules: totalModules,
+//               progressPercentage: progressPercentage,
+//               isCompleted: isCourseCompleted,
+//               completedAt: isCourseCompleted ? (existingProgress.completedAt || new Date()) : null,
+//               updatedAt: new Date(),
+//             })
+//             .where(eq(courseProgress.id, existingProgress.id));
+//         } else if (completedModulesCount > 0 || totalModules > 0) {
+//           await db.insert(courseProgress).values({
+//             userId,
+//             courseId: courseItem.id,
+//             completedModules: completedModulesCount,
+//             totalModules: totalModules,
+//             progressPercentage: progressPercentage,
+//             isCompleted: isCourseCompleted,
+//             completedAt: isCourseCompleted ? new Date() : null,
+//           });
+//         }
+
+//         return {
+//           ...courseItem,
+//           isCourseCompleted,
+//           modules,
+//           progress: {
+//             completedModules: completedModulesCount,
+//             totalModules,
+//             progressPercentage,
+//             isCompleted: isCourseCompleted,
+//             completedAt: isCourseCompleted ? (existingProgress?.completedAt || new Date()) : null,
+//           }
+//         };
+//       })
+//     );
+
+//     return sendResponse(
+//       200,
+//       {
+//         data: coursesWithModules,
+//         count: coursesWithModules.length,
+//         page,
+//         total: totalCount,
+//         totalPages,
+//         hasNextPage: page < totalPages,
+//         hasPreviousPage: page > 1,
+//       },
+//       coursesWithModules.length === 0 ? "No course found" : "Courses fetched successfully"
+//     );
+//   } catch (error) {
+//     const errorMessage = error instanceof Error ? error.message : "An error occurred";
+//     return sendResponse(500, null, errorMessage);
+//   }
+// };
+
+
 export const GET = async (req: NextRequest) => {
   try {
+    // Get userId but don't require authentication
     const userId = await getUserIdFromSession();
-    if (!userId) {
-      return sendResponse(401, null, "Unauthorized");
-    }
-
+    
     const pagination = await getPaginationParams(req);
     let { page, offset } = pagination;
     const { limit } = pagination;
@@ -113,6 +302,7 @@ export const GET = async (req: NextRequest) => {
     const totalResult = await db.execute<CountResult>(
       sql`SELECT COUNT(*)::int AS count FROM ${course}`
     );
+
     const totalCount = totalResult.rows[0]?.count ?? 0;
     const totalPages = Math.max(Math.ceil(totalCount / limit), 1);
 
@@ -121,8 +311,8 @@ export const GET = async (req: NextRequest) => {
       offset = 0;
     }
 
-    // Main query with LEFT JOIN to get course completion status
-    const paginatedCourses = await db
+    // Build the query conditionally based on authentication
+    const queryBuilder = db
       .select({
         id: course.id,
         createdId: course.createdId,
@@ -139,27 +329,43 @@ export const GET = async (req: NextRequest) => {
         createdAt: course.createdAt,
         updatedAt: course.updatedAt,
         moduleCount: sql<number>`COUNT(DISTINCT ${courseModules.id})::int`.as('module_count'),
-        // LEFT JOIN to get completion status
-        isCompleted: sql<boolean>`COALESCE(${courseProgress.isCompleted}, false)`.as('is_completed'),
-        progressPercentage: sql<number>`COALESCE(${courseProgress.progressPercentage}, 0)`.as('progress_percentage'),
-        completedModules: sql<number>`COALESCE(${courseProgress.completedModules}, 0)`.as('completed_modules'),
-        totalModules: sql<number>`COALESCE(${courseProgress.totalModules}, 0)`.as('total_modules'),
+        // Return null for progress fields if not authenticated
+        isCompleted: userId 
+          ? sql<boolean>`COALESCE(${courseProgress.isCompleted}, false)`.as('is_completed')
+          : sql<boolean>`false`.as('is_completed'),
+        progressPercentage: userId
+          ? sql<number>`COALESCE(${courseProgress.progressPercentage}, 0)`.as('progress_percentage')
+          : sql<number>`0`.as('progress_percentage'),
+        completedModules: userId
+          ? sql<number>`COALESCE(${courseProgress.completedModules}, 0)`.as('completed_modules')
+          : sql<number>`0`.as('completed_modules'),
+        totalModules: userId
+          ? sql<number>`COALESCE(${courseProgress.totalModules}, 0)`.as('total_modules')
+          : sql<number>`0`.as('total_modules'),
       })
       .from(course)
-      .leftJoin(courseModules, eq(course.id, courseModules.courseId))
-      .leftJoin(
+      .leftJoin(courseModules, eq(course.id, courseModules.courseId));
+
+    // Only join progress table if user is authenticated
+    if (userId) {
+      queryBuilder.leftJoin(
         courseProgress,
         and(
           eq(courseProgress.courseId, course.id),
           eq(courseProgress.userId, userId)
         )
-      )
+      );
+    }
+
+    const paginatedCourses = await queryBuilder
       .groupBy(
         course.id,
-        courseProgress.isCompleted,
-        courseProgress.progressPercentage,
-        courseProgress.completedModules,
-        courseProgress.totalModules
+        ...(userId ? [
+          courseProgress.isCompleted,
+          courseProgress.progressPercentage,
+          courseProgress.completedModules,
+          courseProgress.totalModules
+        ] : [])
       )
       .limit(limit)
       .offset(offset)
@@ -167,7 +373,6 @@ export const GET = async (req: NextRequest) => {
 
     const coursesWithModules = await Promise.all(
       paginatedCourses.map(async (courseItem) => {
-        // Get all modules for this course
         const allModules = await db
           .select({
             id: courseModules.id,
@@ -178,22 +383,25 @@ export const GET = async (req: NextRequest) => {
 
         const totalModules = allModules.length;
 
-        // Count completed modules
-        const completedModulesResult = await db
-          .select({ count: count() })
-          .from(courseModuleProgress)
-          .where(
-            and(
-              eq(courseModuleProgress.courseId, courseItem.id),
-              eq(courseModuleProgress.userId, userId),
-              eq(courseModuleProgress.isCompleted, true)
-            )
-          );
+        // Only fetch completed modules if authenticated
+        let completedModulesCount = 0;
+        if (userId) {
+          const completedModulesResult = await db
+            .select({ count: count() })
+            .from(courseModuleProgress)
+            .where(
+              and(
+                eq(courseModuleProgress.courseId, courseItem.id),
+                eq(courseModuleProgress.userId, userId),
+                eq(courseModuleProgress.isCompleted, true)
+              )
+            );
 
-        const completedModulesCount = completedModulesResult[0]?.count || 0;
+          completedModulesCount = completedModulesResult[0]?.count || 0;
+        }
 
-        // Get modules with completion status
-        const modules = await db
+        // Build modules query
+        const modulesQueryBuilder = db
           .select({
             id: courseModules.id,
             title: courseModules.title,
@@ -202,19 +410,27 @@ export const GET = async (req: NextRequest) => {
             contentType: courseModules.contentType,
             contentUrl: courseModules.contentUrl,
             durationTime: courseModules.durationTime,
-            isCompleted: sql<boolean>`COALESCE(${courseModuleProgress.isCompleted}, false)`.as('is_completed'),
-            completedAt: courseModuleProgress.completedAt,
+            isCompleted: userId
+              ? sql<boolean>`COALESCE(${courseModuleProgress.isCompleted}, false)`.as('is_completed')
+              : sql<boolean>`false`.as('is_completed'),
+            completedAt: userId ? courseModuleProgress.completedAt : sql<Date | null>`null`,
             createdAt: courseModules.createdAt,
             updatedAt: courseModules.updatedAt,
           })
-          .from(courseModules)
-          .leftJoin(
+          .from(courseModules);
+
+        // Only join module progress if authenticated
+        if (userId) {
+          modulesQueryBuilder.leftJoin(
             courseModuleProgress,
             and(
               eq(courseModules.id, courseModuleProgress.moduleId),
               eq(courseModuleProgress.userId, userId)
             )
-          )
+          );
+        }
+
+        const modules = await modulesQueryBuilder
           .where(eq(courseModules.courseId, courseItem.id))
           .orderBy(courseModules.createdAt);
 
@@ -224,40 +440,43 @@ export const GET = async (req: NextRequest) => {
 
         const isCourseCompleted = totalModules > 0 && completedModulesCount === totalModules;
 
-        // Update or create course progress
-        const [existingProgress] = await db
-          .select()
-          .from(courseProgress)
-          .where(
-            and(
-              eq(courseProgress.courseId, courseItem.id),
-              eq(courseProgress.userId, userId)
+        // Only update/insert progress if authenticated
+        let existingProgress = null;
+        if (userId) {
+          [existingProgress] = await db
+            .select()
+            .from(courseProgress)
+            .where(
+              and(
+                eq(courseProgress.courseId, courseItem.id),
+                eq(courseProgress.userId, userId)
+              )
             )
-          )
-          .limit(1);
+            .limit(1);
 
-        if (existingProgress) {
-          await db
-            .update(courseProgress)
-            .set({
+          if (existingProgress) {
+            await db
+              .update(courseProgress)
+              .set({
+                completedModules: completedModulesCount,
+                totalModules: totalModules,
+                progressPercentage: progressPercentage,
+                isCompleted: isCourseCompleted,
+                completedAt: isCourseCompleted ? (existingProgress.completedAt || new Date()) : null,
+                updatedAt: new Date(),
+              })
+              .where(eq(courseProgress.id, existingProgress.id));
+          } else if (completedModulesCount > 0 || totalModules > 0) {
+            await db.insert(courseProgress).values({
+              userId,
+              courseId: courseItem.id,
               completedModules: completedModulesCount,
               totalModules: totalModules,
               progressPercentage: progressPercentage,
               isCompleted: isCourseCompleted,
-              completedAt: isCourseCompleted ? (existingProgress.completedAt || new Date()) : null,
-              updatedAt: new Date(),
-            })
-            .where(eq(courseProgress.id, existingProgress.id));
-        } else if (completedModulesCount > 0 || totalModules > 0) {
-          await db.insert(courseProgress).values({
-            userId,
-            courseId: courseItem.id,
-            completedModules: completedModulesCount,
-            totalModules: totalModules,
-            progressPercentage: progressPercentage,
-            isCompleted: isCourseCompleted,
-            completedAt: isCourseCompleted ? new Date() : null,
-          });
+              completedAt: isCourseCompleted ? new Date() : null,
+            });
+          }
         }
 
         return {
@@ -269,7 +488,9 @@ export const GET = async (req: NextRequest) => {
             totalModules,
             progressPercentage,
             isCompleted: isCourseCompleted,
-            completedAt: isCourseCompleted ? (existingProgress?.completedAt || new Date()) : null,
+            completedAt: userId && isCourseCompleted 
+              ? (existingProgress?.completedAt || new Date()) 
+              : null,
           }
         };
       })
@@ -285,11 +506,11 @@ export const GET = async (req: NextRequest) => {
         totalPages,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
+        isAuthenticated: !!userId, // Add flag to indicate auth status
       },
       coursesWithModules.length === 0 ? "No course found" : "Courses fetched successfully"
     );
   } catch (error) {
-    console.error("Course fetch error:", error);
     const errorMessage = error instanceof Error ? error.message : "An error occurred";
     return sendResponse(500, null, errorMessage);
   }

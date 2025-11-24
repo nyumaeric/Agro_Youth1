@@ -1,13 +1,13 @@
 // 'use client';
 // import React, { useState, useEffect } from 'react';
-// import { useInfiniteQuery } from "@tanstack/react-query";
 // import { useInView } from "react-intersection-observer";
 // import { useRouter } from 'next/navigation';
-// import axios from 'axios';
 // import Skeleton from "react-loading-skeleton";
 // import "react-loading-skeleton/dist/skeleton.css";
 // import { useSession } from 'next-auth/react';
 // import { Button } from '@/components/ui/button';
+// import { WifiOff } from 'lucide-react';
+// import { useCoursesWithOffline } from '@/hooks/useCourse';
 
 // interface Course {
 //   id: string;
@@ -18,16 +18,6 @@
 //   moduleCount: number;
 //   timeToComplete: string;
 //   language: string;
-// }
-
-// interface CourseResponse {
-//   data: Course[];
-//   count: number;
-//   page: number;
-//   total: number;
-//   totalPages: number;
-//   hasNextPage: boolean;
-//   hasPreviousPage: boolean;
 // }
 
 // const CourseSkeleton = () => (
@@ -49,7 +39,7 @@
 // const Courses: React.FC = () => {
 //   const { ref, inView } = useInView();
 //   const router = useRouter();
-//   const { data: session } = useSession();
+//   const [isOnline, setIsOnline] = useState(true);
 //   const [filter, setFilter] = useState({
 //     category: '',
 //     level: '',
@@ -63,33 +53,26 @@
 //     isFetchingNextPage,
 //     isLoading,
 //     isError
-//   } = useInfiniteQuery({
-//     queryKey: ['courses'],
-//     queryFn: async ({ pageParam = 1 }) => {
-//       const response = await axios.get<{ data: CourseResponse }>(
-//         `/api/courses?page=${pageParam}&limit=8`
-//       );
-//       return response.data.data;
-//     },
-//     getNextPageParam: (lastPage) => {
-//       return lastPage.hasNextPage ? lastPage.page + 1 : undefined;
-//     },
-//     initialPageParam: 1,
-//   });
+//   } = useCoursesWithOffline();
 
 //   useEffect(() => {
-//     if (inView && hasNextPage && !isFetchingNextPage) {
+//     const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    
+//     updateOnlineStatus();
+//     window.addEventListener('online', updateOnlineStatus);
+//     window.addEventListener('offline', updateOnlineStatus);
+
+//     return () => {
+//       window.removeEventListener('online', updateOnlineStatus);
+//       window.removeEventListener('offline', updateOnlineStatus);
+//     };
+//   }, []);
+
+//   useEffect(() => {
+//     if (inView && hasNextPage && !isFetchingNextPage && isOnline) {
 //       fetchNextPage();
 //     }
-//   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-//   const handleAccessCourse = () => {
-//     if (session) {
-//       router.push('/dashboard/courses');
-//     } else {
-//       router.push('/login');
-//     }
-//   };
+//   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, isOnline]);
 
 //   const allCourses = data?.pages.flatMap(page => page.data) || [];
 
@@ -111,6 +94,22 @@
 //             Enhance your farming skills with our comprehensive courses and earn certificates upon completion
 //           </p>
 //         </div>
+
+//         {/* Offline Banner */}
+//         {!isOnline && (
+//           <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-6 rounded-lg flex items-center gap-3">
+//             <WifiOff className="h-5 w-5 flex-shrink-0" />
+//             <div>
+//               <p className="font-semibold">You're currently offline</p>
+//               <p className="text-sm">
+//                 {allCourses.length > 0 
+//                   ? 'Showing cached courses. Some features may be limited while offline.'
+//                   : 'No cached courses available. Please connect to the internet.'}
+//               </p>
+//             </div>
+//           </div>
+//         )}
+
 //         <div>
 //           <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
 //             <h2 className="text-2xl font-bold text-green-800 mb-6">Available Courses</h2>
@@ -154,6 +153,7 @@
 //             {/* Course Count */}
 //             <div className="text-gray-600 text-sm mb-4">
 //               Showing {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
+//               {!isOnline && allCourses.length > 0 && ' (from cache)'}
 //             </div>
 //           </div>
 
@@ -162,13 +162,33 @@
 //               Array.from({ length: 8 }).map((_, index) => (
 //                 <CourseSkeleton key={index} />
 //               ))
-//             ) : isError ? (
-//               <div className="col-span-full text-center py-12">
-//                 <p className="text-red-600 text-lg">Error loading courses. Please try again.</p>
+//             ) : isError && allCourses.length === 0 ? (
+//               <div className="col-span-full bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+//                 <div className="text-6xl mb-4">⚠️</div>
+//                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
+//                   {!isOnline ? 'No Cached Courses Available' : 'Error Loading Courses'}
+//                 </h3>
+//                 <p className="text-gray-600">
+//                   {!isOnline 
+//                     ? 'Please connect to the internet to load courses.' 
+//                     : 'There was an error loading courses. Please try again later.'}
+//                 </p>
+//               </div>
+//             ) : filteredCourses.length === 0 && allCourses.length > 0 ? (
+//               <div className="col-span-full bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+//                 <div className="text-6xl mb-4">🔍</div>
+//                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No Matching Courses</h3>
+//                 <p className="text-gray-600">Try adjusting your filters to find courses.</p>
 //               </div>
 //             ) : filteredCourses.length === 0 ? (
-//               <div className="col-span-full text-center py-12">
-//                 <p className="text-gray-600 text-lg">No courses found matching your filters.</p>
+//               <div className="col-span-full bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+//                 <div className="text-6xl mb-4">📚</div>
+//                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No Courses Available</h3>
+//                 <p className="text-gray-600">
+//                   {!isOnline 
+//                     ? 'No cached courses. Connect to the internet to load courses.'
+//                     : 'Check back soon for new courses!'}
+//                 </p>
 //               </div>
 //             ) : (
 //               filteredCourses.map((course) => (
@@ -176,7 +196,7 @@
 //                   key={course.id}
 //                   className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100"
 //                 >
-//                   <div className="h-40 bg-linear-to-r from-green-500 to-green-700 relative overflow-hidden">
+//                   <div className="h-40 bg-gradient-to-r from-green-500 to-green-700 relative overflow-hidden">
 //                     <div className="absolute inset-0 bg-gray-400 bg-opacity-20"></div>
 //                     <div className="absolute top-3 left-3">
 //                       <span className="bg-white bg-opacity-90 text-green-800 text-xs font-semibold px-2.5 py-1 rounded-full">
@@ -219,16 +239,19 @@
 //                     </div>
 
 //                     <Button
-//                       onClick={() => router.push("/dashboard/courses")}
-//                       className="w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-200 bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg transform hover:scale-105"
+//                       onClick={() => {
+//                         router.push("/dashboard/courses");
+//                       }}
+//                       // disabled={!isOnline}
+//                       className="w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-200 bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
 //                     >
-//                         <span className="flex items-center justify-center space-x-2">
-//                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-//                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-//                           </svg>
-//                           <span>Access Dashboard</span>
-//                         </span>
-                    
+//                       <span className="flex items-center justify-center space-x-2">
+//                         {!isOnline && <WifiOff className="w-4 h-4" />}
+//                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+//                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+//                         </svg>
+//                         <span>Access Dashboard</span>
+//                       </span>
 //                     </Button>
 //                   </div>
 //                 </div>
@@ -244,11 +267,15 @@
 //             </div>
 //           )}
 
-//           <div ref={ref} className="h-10 mt-8" />
+//           {isOnline && <div ref={ref} className="h-10 mt-8" />}
 
 //           {!hasNextPage && filteredCourses.length > 0 && (
 //             <div className="text-center py-8">
-//               <p className="text-gray-500">You've reached the end of the courses</p>
+//               <p className="text-gray-500">
+//                 {isOnline 
+//                   ? "You've reached the end of the courses" 
+//                   : "Showing all cached courses"}
+//               </p>
 //             </div>
 //           )}
 //         </div>
@@ -258,16 +285,6 @@
 // };
 
 // export default Courses;
-
-
-
-
-
-
-
-
-
-
 
 
 'use client';
@@ -311,7 +328,7 @@ const CourseSkeleton = () => (
 const Courses: React.FC = () => {
   const { ref, inView } = useInView();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isOnline, setIsOnline] = useState(true);
   const [filter, setFilter] = useState({
     category: '',
@@ -328,7 +345,6 @@ const Courses: React.FC = () => {
     isError
   } = useCoursesWithOffline();
 
-  // Monitor online/offline status
   useEffect(() => {
     const updateOnlineStatus = () => setIsOnline(navigator.onLine);
     
@@ -356,6 +372,15 @@ const Courses: React.FC = () => {
     if (filter.language && course.language !== filter.language) return false;
     return true;
   });
+
+  const handleCourseAccess = (courseId: string) => {
+    if (status === 'authenticated' && session) {
+      router.push(`/dashboard/courses/${courseId}/modules`);
+    } else {
+      const callbackUrl = encodeURIComponent(`/dashboard/courses/${courseId}/modules`);
+      router.push(`/login?callbackUrl=${callbackUrl}`);
+    }
+  };
 
   return (
     <div className="min-h-screen py-28 bg-gray-50">
@@ -513,10 +538,8 @@ const Courses: React.FC = () => {
                     </div>
 
                     <Button
-                      onClick={() => {
-                        router.push("/dashboard/courses");
-                      }}
-                      // disabled={!isOnline}
+                      onClick={() => handleCourseAccess(course.id)}
+                      disabled={!isOnline && status !== 'authenticated'}
                       className="w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-200 bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                       <span className="flex items-center justify-center space-x-2">
@@ -524,7 +547,9 @@ const Courses: React.FC = () => {
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
-                        <span>Access Dashboard</span>
+                        <span>
+                          {status === 'authenticated' ? 'Start Learning' : 'Login to Start'}
+                        </span>
                       </span>
                     </Button>
                   </div>
@@ -559,8 +584,3 @@ const Courses: React.FC = () => {
 };
 
 export default Courses;
-
-
-
-
-
