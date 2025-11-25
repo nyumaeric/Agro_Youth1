@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { Eye, EyeOff, Phone, Lock, ArrowLeft } from 'lucide-react';
 import { useLogin } from '@/hooks/useLogin';
+import { useSession } from 'next-auth/react';
 
 const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const { data: session, status } = useSession();
+
 
   const { 
     formData,
@@ -23,39 +24,57 @@ const Login: React.FC = () => {
     await handleSubmission();
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
+  // Show loading state if already authenticated
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <span className="text-4xl">🌾</span>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
-              AgroYouth
-            </h1>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-green-600 shadow-lg mb-4 animate-pulse">
+            <span className="text-3xl">🌾</span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome Back!
-          </h2>
-          <p className="text-gray-600">
-            Sign in to your account to continue
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <div className="w-full max-w-md">
+        {/* Back Button */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span>Back to home</span>
+        </Link>
+
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-600 shadow-lg mb-3">
+            <span className="text-2xl">🌾</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+            Welcome Back
+          </h1>
+          <p className="text-gray-600 text-sm">
+            Sign in to continue to AgroYouth
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="p-8">
-            <form onSubmit={onSubmit} className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
+          <div className="p-6 sm:p-8">
+            <form onSubmit={onSubmit} className="space-y-4">
               {/* Phone Number Input */}
               <div>
-                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Phone Number
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
+                    <Phone className="w-5 h-5 text-gray-400" />
                   </div>
                   <input
                     type="tel"
@@ -64,24 +83,28 @@ const Login: React.FC = () => {
                     placeholder="0781234567"
                     value={formData.phoneNumber}
                     onChange={handleLoginInputField}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                    className={`w-full pl-10 pr-4 py-2.5 border ${
+                      errors.phoneNumber 
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-green-600 focus:border-green-600'
+                    } rounded-lg focus:ring-2 transition-all outline-none text-gray-900 placeholder:text-gray-400`}
+                    disabled={isLoading}
+                    autoComplete="tel"
                   />
                 </div>
                 {errors.phoneNumber && (
-                  <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>
+                  <p className="text-red-600 text-xs mt-1 ml-0.5">{errors.phoneNumber}</p>
                 )}
               </div>
 
               {/* Password Input */}
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Password
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                    <Lock className="w-5 h-5 text-gray-400" />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
@@ -90,58 +113,56 @@ const Login: React.FC = () => {
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleLoginInputField}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                    className={`w-full pl-10 pr-11 py-2.5 border ${
+                      errors.password 
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-green-600 focus:border-green-600'
+                    } rounded-lg focus:ring-2 transition-all outline-none text-gray-900 placeholder:text-gray-400`}
+                    disabled={isLoading}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+                    disabled={isLoading}
+                    tabIndex={-1}
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                  <p className="text-red-600 text-xs mt-1 ml-0.5">{errors.password}</p>
                 )}
               </div>
 
               {/* Forgot Password Link */}
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-1">
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-green-600 hover:text-green-700 hover:underline transition-colors"
+                  className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors hover:underline"
                 >
                   Forgot password?
                 </Link>
               </div>
 
-              {/* General Error Alert */}
-              {errors.general && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
-                  <svg className="w-5 h-5 text-red-600 mr-2 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-red-800 text-sm">{errors.general}</span>
-                </div>
-              )}
-
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center justify-center ${
+                className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 flex items-center justify-center mt-6 ${
                   !isLoading
-                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg active:scale-[0.98]'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 }`}
               >
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Signing In...
+                    Signing in...
                   </>
                 ) : (
                   'Sign In'
@@ -151,28 +172,29 @@ const Login: React.FC = () => {
           </div>
 
           {/* Card Footer */}
-          <div className="bg-gray-50 px-8 py-4 border-t border-gray-100 text-center">
+          <div className="bg-gray-50 px-6 sm:px-8 py-4 border-t border-gray-100 text-center rounded-b-2xl">
             <p className="text-gray-600 text-sm">
               Don't have an account?{' '}
               <Link
                 href="/register"
-                className="text-green-600 hover:text-green-700 font-medium transition-colors"
+                className="text-green-600 hover:text-green-700 font-semibold transition-colors hover:underline"
               >
-                Create one here
+                Sign up
               </Link>
             </p>
           </div>
         </div>
 
-        {/* Additional Info */}
-        <div className="text-center">
-          <p className="text-sm text-gray-500">
-            New to AgroYouth?{' '}
-            <Link
-              href="/"
-              className="text-green-600 hover:text-green-700 transition-colors"
-            >
-              Learn more about our platform
+        {/* Additional Help */}
+        <div className="text-center mt-6">
+          <p className="text-xs text-gray-500">
+            By signing in, you agree to our{' '}
+            <Link href="/terms" className="text-gray-700 hover:underline">
+              Terms of Service
+            </Link>
+            {' '}and{' '}
+            <Link href="/privacy" className="text-gray-700 hover:underline">
+              Privacy Policy
             </Link>
           </p>
         </div>

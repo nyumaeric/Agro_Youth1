@@ -64,7 +64,6 @@ export function NavUser({ userinfo }: NavUserProps) {
       router.refresh();
     },
     onError: (error) => {
-      console.error("Logout error:", error);
       showToast("Failed to logout. Please try again.", "error");
     },
   });

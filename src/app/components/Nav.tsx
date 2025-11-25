@@ -19,7 +19,7 @@ const Header: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     setToken(null);
-    router.push('/');
+    router.push('/login');
   };
 
   const isActivePage = (path: string) => pathname === path;
