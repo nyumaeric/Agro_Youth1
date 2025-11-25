@@ -1450,8 +1450,8 @@ const Dashboard: React.FC = () => {
                     <Progress value={course.progress} className="mb-2" />
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Progress: {course.progress}%</span>
-                      <Link href={`/courses/${course.id}/modules`}>
-                        <Button size="sm">Continue <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                      <Link href={`/dashboard/courses/${course.id}/modules`}>
+                        <Button size="sm">Continue <ArrowRight className="ml-2 h-4 w-4 cursor-pointer" /></Button>
                       </Link>
                     </div>
                   </div>
@@ -1462,29 +1462,50 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Received Applications */}
-        <Card className="col-span-3">
+{/* Received Applications */}
+    <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Received Applications</CardTitle>
             <CardDescription>Latest funding requests</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {receivedApplications.map((app: any) => (
-                <div key={app.id} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-sm">{app.projectTitle}</p>
-                    {getStatusBadge(app.status)}
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <Skeleton width="60%" height={16} />
+                      <Skeleton width={80} height={20} />
+                    </div>
+                    <Skeleton width={100} height={16} className="mb-2" />
+                    <Skeleton width="50%" height={12} className="mb-3" />
+                    <Skeleton height={32} />
                   </div>
-                  <p className="text-sm font-medium text-green-600">${app.budgetAmount.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">{app.submittedDate}</p>
-                  <Link href={`/applications/${app.id}`}>
-                    <Button size="sm" variant="ghost" className="mt-2 w-full">
-                      Review Details <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : receivedApplications.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No applications received yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {receivedApplications.map((app: any) => (
+                  <div key={app.id} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-semibold text-sm flex-1 line-clamp-2">{app.projectTitle}</p>
+                      <div className="flex-shrink-0">{getStatusBadge(app.status)}</div>
+                    </div>
+                    <p className="text-sm font-medium text-green-600">${app.budgetAmount.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{app.submittedDate}</p>
+                    <Link href={`/dashboard/investor/review-applications`}>
+                      <Button size="sm" variant="ghost" className="mt-2 w-full">
+                        Review Details <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1495,7 +1516,7 @@ const Dashboard: React.FC = () => {
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4">
             {recentActivity.map((activity: any, index: number) => {
               const { icon, bgColor, iconBg } = getActivityIcon(activity.type);
               return (
@@ -1609,7 +1630,7 @@ const Dashboard: React.FC = () => {
                     <Progress value={course.progress} className="mb-2" />
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Progress: {course.progress}%</span>
-                      <Link href={`/courses/${course.id}`}>
+                      <Link href={`/dashboard/courses/${course.id}/modules`}>
                         <Button size="sm">Continue <ArrowRight className="ml-2 h-4 w-4" /></Button>
                       </Link>
                     </div>
@@ -1628,22 +1649,22 @@ const Dashboard: React.FC = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Link href="/courses">
+              <Link href="/dashboard/courses">
                 <Button className="w-full" variant="outline">
                   <BookOpen className="mr-2 h-4 w-4" /> Explore Courses
                 </Button>
               </Link>
-              <Link href="/learning">
+              <Link href="/dashboard/courses/enrolled">
                 <Button className="w-full" variant="outline">
                   <TrendingUp className="mr-2 h-4 w-4" /> My Learning
                 </Button>
               </Link>
-              <Link href="/applications/new">
+              <Link href="/apply">
                 <Button className="w-full" variant="outline">
                   <FileText className="mr-2 h-4 w-4" /> New Application
                 </Button>
               </Link>
-              <Link href="/applications">
+              <Link href="/dashboard/allapplications">
                 <Button className="w-full" variant="outline">
                   <Target className="mr-2 h-4 w-4" /> My Applications
                 </Button>
@@ -1691,7 +1712,7 @@ const Dashboard: React.FC = () => {
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">No applications yet</p>
               <Link href="/applications/new">
-                <Button>Submit Application</Button>
+                <Button className="cursor-pointer">Submit Application</Button>
               </Link>
             </div>
           ) : (
@@ -1746,8 +1767,8 @@ const Dashboard: React.FC = () => {
             {!isOnline && hasData && ' (viewing cached data)'}
           </p>
         </div>
-        <Link href="/courses">
-          <Button>Browse Courses</Button>
+        <Link href="/dashboard/courses">
+          <Button className="cursor-pointer">Browse Courses</Button>
         </Link>
       </div>
 
