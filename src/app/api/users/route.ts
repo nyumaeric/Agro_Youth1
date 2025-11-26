@@ -40,23 +40,19 @@ export const GET = async(req: NextRequest) => {
 
 export const PUT = async(req: NextRequest) => {
     try {
-        // 1. Check authentication
         const adminUserId = await getUserIdFromSession();
         if(!adminUserId){
             return sendResponse(401, null, "Unauthorized: Please login")
         }
 
-        // 2. Check admin authorization
         const isAdmin = await checkIfUserIsAdmin();
         if(!isAdmin){
             return sendResponse(403, null, "Forbidden: Admin access required")
         }
 
-        // 3. Parse request body - ONLY role and userType allowed
         const body = await req.json();
         const { userId, userType, roleId } = body;
 
-        // 4. Validate required fields
         if (!userId) {
             return sendResponse(400, null, "User ID is required")
         }
@@ -65,12 +61,10 @@ export const PUT = async(req: NextRequest) => {
             return sendResponse(400, null, "At least one field (userType or roleId) is required")
         }
 
-        // 5. Prevent admin from updating themselves through this endpoint
         if (userId === adminUserId) {
             return sendResponse(400, null, "Cannot update your own account through this endpoint")
         }
 
-        // 6. Check if user exists
         const existingUser = await db.select()
             .from(users)
             .where(eq(users.id, userId))
@@ -80,12 +74,10 @@ export const PUT = async(req: NextRequest) => {
             return sendResponse(404, null, "User not found")
         }
 
-        // 7. Validate userType if provided
         if (userType && !['farmer', 'buyer', 'investor'].includes(userType)) {
             return sendResponse(400, null, "Invalid user type. Must be 'farmer', 'buyer', or 'investor'")
         }
 
-        // 8. Validate role if provided
         if (roleId) {
             const roleExists = await db.select()
                 .from(roles)
@@ -97,7 +89,6 @@ export const PUT = async(req: NextRequest) => {
             }
         }
 
-        // 9. Prepare update data - ONLY role and userType
         const updateData: any = {
             updatedAt: new Date(),
             sessionVersion: sql`${users.sessionVersion} + 1`
@@ -106,12 +97,10 @@ export const PUT = async(req: NextRequest) => {
         if (userType !== undefined) updateData.userType = userType;
         if (roleId !== undefined) updateData.role = roleId;
 
-        // 10. Update user
         await db.update(users)
             .set(updateData)
             .where(eq(users.id, userId));
 
-        // 11. Fetch complete user data with role name
         const completeUserData = await db.select({
             id: users.id,
             fullName: users.fullName,
@@ -130,7 +119,6 @@ export const PUT = async(req: NextRequest) => {
         return sendResponse(200, completeUserData[0], "User role and type updated successfully")
 
     } catch (error) {
-        console.error("User update error:", error);
         const errorMessage = error instanceof Error ? error.message : "Failed to update user";
         return sendResponse(500, null, errorMessage)
     }

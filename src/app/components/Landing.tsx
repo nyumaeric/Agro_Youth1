@@ -33,8 +33,8 @@ const LandingPage: React.FC = () => {
               <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                 Agro
               </span>
-              <span className="bg-yellow-600 bg-clip-text text-transparent">
-                Youth
+              <span className="bg-yellow-600 bg-clip-text text-transparent ml-1">
+                 Youth
               </span>
             </h1>
 
