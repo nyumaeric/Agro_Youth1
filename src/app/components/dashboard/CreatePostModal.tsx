@@ -178,7 +178,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ courseId, isOpen, onC
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[600px] bg-white">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Create New Post</DialogTitle>
+          <DialogTitle className="text-xl font-bold pb-5">Create New Post</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmitForm} className="space-y-4">
