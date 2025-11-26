@@ -188,12 +188,6 @@ const UserApplicationsList: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">My Applications</h1>
           <p className="text-gray-600 mt-1">Track the status of your donation applications</p>
         </div>
-        <Link href="/apply">
-          <Button className="bg-green-600 hover:bg-green-700">
-            <FileText className="w-4 h-4 mr-2" />
-            New Application
-          </Button>
-        </Link>
       </div>
 
       {/* Statistics Cards */}
@@ -242,11 +236,6 @@ const UserApplicationsList: React.FC = () => {
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Applications Yet</h3>
             <p className="text-gray-600 mb-4">You haven't submitted any donation applications.</p>
-            <Link href="/apply">
-              <Button className="bg-green-600 hover:bg-green-700">
-                Submit Your First Application
-              </Button>
-            </Link>
           </CardContent>
         </Card>
       ) : (
