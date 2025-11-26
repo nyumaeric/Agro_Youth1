@@ -93,10 +93,11 @@ export const POST = async (request: Request) => {
       return sendResponse(401, null, "Unauthorized");
     }
     const isAdmin = await checkIfUserIsAdmin();
+    
 
     const userType = await getUserTypeFromSession();
-    if (userType !== "investor" || isAdmin) {
-      return sendResponse(403, null, "Forbidden: Access is allowed only for investors");
+    if (userType !== "investor" && !isAdmin) {
+      return sendResponse(403, null, "Forbidden: Access is allowed only for investors and admin");
     }
 
     const data = liveSessionsSchema.safeParse(body);
