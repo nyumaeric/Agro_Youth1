@@ -23,9 +23,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useRouter } from "next/navigation"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { useMutation } from "@tanstack/react-query"
 import showToast from "@/utils/showToast"
+import { useEffect, useState } from "react"
 
 export interface UserData {
   id: string;
@@ -51,7 +52,22 @@ const getInitials = (name?: string) => {
 export function NavUser({ userinfo }: NavUserProps) {
   const { isMobile } = useSidebar()
   const router = useRouter();
+  const { data: session } = useSession();
+  const [currentUser, setCurrentUser] = useState<UserData | null>(
+    userinfo && userinfo.length > 0 ? userinfo[0] : null
+  );
 
+  useEffect(() => {
+    if (session?.user) {
+      setCurrentUser({
+        id: session.user.id,
+        fullName: session.user.fullName,
+        userType: session.user.userType,
+        role: session.user.role,
+        profilePicUrl: null,
+      });
+    }
+  }, [session]);
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await signOut({
@@ -88,7 +104,8 @@ export function NavUser({ userinfo }: NavUserProps) {
     )
   }
 
-  const user = userinfo[0];
+  const user = currentUser || (userinfo && userinfo.length > 0 ? userinfo[0] : null);
+  if (!user) return null;
   const initials = getInitials(user.fullName);
 
   return (

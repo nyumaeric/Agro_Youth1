@@ -2,7 +2,7 @@ import db from "@/server/db";
 import { roles, users } from "@/server/db/schema";
 import { checkIfUserIsAdmin, getUserIdFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
-import { eq, ne } from "drizzle-orm";
+import { eq, ne, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 export const GET = async(req: NextRequest) => {
@@ -99,7 +99,8 @@ export const PUT = async(req: NextRequest) => {
 
         // 9. Prepare update data - ONLY role and userType
         const updateData: any = {
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            sessionVersion: sql`${users.sessionVersion} + 1`
         };
 
         if (userType !== undefined) updateData.userType = userType;
@@ -118,6 +119,7 @@ export const PUT = async(req: NextRequest) => {
             userType: users.userType,
             role: users.role,
             roleName: roles.name,
+            sessionVersion: users.sessionVersion,
             updatedAt: users.updatedAt
         })
         .from(users)

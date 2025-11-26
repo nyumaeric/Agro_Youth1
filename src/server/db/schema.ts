@@ -26,6 +26,7 @@ export const users = pgTable("users", {
     isAnonymous: boolean("isAnonymous").default(false),
     password: text("password").notNull(),
     userType: userTypes("user_type").notNull().default("buyer"),
+    sessionVersion: integer("session_version").notNull().default(1),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
