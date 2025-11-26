@@ -85,7 +85,7 @@ export function NavMain() {
       <SidebarGroupContent className="flex flex-col gap-2 px-3">
         <SidebarMenu>
           <SidebarMenuItem className="mb-4">
-            <Link href="/dashboard" className="block w-full">
+            <Link href="/" className="block w-full">
               <SidebarMenuButton
                 tooltip="Dashboard Overview"
                 className={cn(
