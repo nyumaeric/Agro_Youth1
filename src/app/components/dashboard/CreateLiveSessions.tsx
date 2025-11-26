@@ -9,6 +9,7 @@ import { Calendar, Clock, Video, TrendingUp } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import showToast from "@/utils/showToast";
 
 interface PopularPost {
   id: string;
@@ -108,12 +109,13 @@ export default function CreateSessionDialog({ popularPosts = [], isLoadingPosts 
           durationMinutes: "",
         });
         setSelectedPosts(new Set());
+        showToast("Live session created successfully", "success");
         queryClient.invalidateQueries({ queryKey: ['livesessions'] });
       } else {
-        alert(data.message || "Failed to create session");
+        showToast(data.message || "Failed to create session", "error");
       }
     } catch (error) {
-      alert("An error occurred while creating the session");
+      showToast("An error occurred while creating the session", "error");
     } finally {
       setIsLoading(false);
     }
