@@ -1,6 +1,6 @@
 import db from "@/server/db";
 import { liveSessions } from "@/server/db/schema";
-import { getUserIdFromSession, getUserTypeFromSession } from "@/utils/getUserIdFromSession";
+import { checkIfUserIsAdmin, getUserIdFromSession, getUserTypeFromSession } from "@/utils/getUserIdFromSession";
 import { sendResponse } from "@/utils/response";
 import { liveSessionsSchema } from "@/validator/liveSessionValidator";
 import { google } from 'googleapis';
@@ -92,9 +92,10 @@ export const POST = async (request: Request) => {
     if (!userId) {
       return sendResponse(401, null, "Unauthorized");
     }
+    const isAdmin = await checkIfUserIsAdmin();
 
     const userType = await getUserTypeFromSession();
-    if (userType !== "investor") {
+    if (userType !== "investor" || isAdmin) {
       return sendResponse(403, null, "Forbidden: Access is allowed only for investors");
     }
 
