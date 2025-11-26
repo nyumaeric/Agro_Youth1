@@ -34,15 +34,15 @@ const CommentReplies: React.FC<CommentRepliesProps> = ({
 
   const {
     formData: replyFormData,
-    setformData: setReplyFormData,
+    setFormData: setReplyFormData,
     isPending: isReplyPending,
     errors: replyErrors,
     handleSubmit: handleReplySubmit,
     handleInputField: handleReplyInputField
-  } = useCreateRepliesComment(courseId);
+  } = useCreateRepliesComment();
 
   const replies = commentReplies || [];
-  const totalCount = commentReplies?.length || initialRepliesCount;
+  const totalCount = replies.length || initialRepliesCount;
 
   useEffect(() => {
     if (replyingTo === commentId && !showReplies) {

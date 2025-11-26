@@ -1,81 +1,94 @@
 import { createCommentReplies } from "@/services/posts/comments/replyComments";
 import showToast from "@/utils/showToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react"
+import { useState } from "react";
 import { z } from "zod";
 
-const initialData: {
+interface ReplyFormData {
   commentReplies: string;
   isAnonymous: boolean;
-} = {
-  commentReplies: "",
-  isAnonymous: false
 }
 
-export const useCreateRepliesComment = (id: string) => {
-  const [formData, setformData] = useState(initialData);
+const initialData: ReplyFormData = {
+  commentReplies: "",
+  isAnonymous: false
+};
+
+export const useCreateRepliesComment = () => {
+  const [formData, setFormData] = useState<ReplyFormData>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
 
   const { mutate, isPending } = useMutation({
-    mutationFn: ({ ids, commentId }: {
-      ids: string;
-      commentId: string
+    mutationFn: ({ 
+      courseId, 
+      postId, 
+      commentId,
+      commentReplies,
+      isAnonymous 
+    }: {
+      courseId: string;
+      postId: string;
+      commentId: string;
+      commentReplies: string;
+      isAnonymous: boolean;
     }) => {
       return createCommentReplies({
-        id,
-        ids,
+        id: courseId,
+        ids: postId,
         commentId,
-        commentReplies: formData.commentReplies,
-        isAnonymous: formData.isAnonymous
-      })
+        commentReplies,
+        isAnonymous
+      });
     },
     onSuccess: (response, variables) => {
       showToast('Reply posted successfully!', 'success');
-      setformData(initialData);
+      setFormData(initialData);
       setErrors({});
+      
+      // Invalidate queries to refetch updated data
       queryClient.invalidateQueries({
         queryKey: ['Posts']
       });
       queryClient.invalidateQueries({
-        queryKey: ['commentReplies', id, variables.ids, variables.commentId]
+        queryKey: ['Posts', variables.courseId]
       });
-
+      queryClient.invalidateQueries({
+        queryKey: ['Posts', variables.courseId, variables.postId]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['commentReplies', variables.courseId, variables.postId, variables.commentId]
+      });
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message ||
         error?.message ||
         'Failed to post reply. Please try again.';
       showToast(errorMessage, 'error');
+      console.error('Reply submission error:', error);
     },
-  })
+  });
 
-  const handleSubmit = async (id: string, ids: string, commentsId: string) => {
+  const handleSubmit = async (courseId: string, postId: string, commentId: string) => {
     if (!formData.commentReplies?.trim()) {
       setErrors({ commentReplies: 'Reply content is required' });
       return;
     }
 
     try {
-      console.log('HandleSubmit called with:', { 
-        id, 
-        ids, 
-        commentsId, 
-        content: formData.commentReplies,
-        isAnonymous: formData.isAnonymous 
-      });
       await mutate({
-        ids,
-        commentId: commentsId
+        courseId,
+        postId,
+        commentId,
+        commentReplies: formData.commentReplies,
+        isAnonymous: formData.isAnonymous
       });
     } catch (error) {
-      console.error('HandleSubmit error:', error);
       if (error instanceof z.ZodError) {
         const fieldErrors = error.issues.reduce(
           (acc: Record<string, string>, curr) => {
-            const key = Array.isArray(curr.path) ? curr.path[0] : undefined;
-            if (typeof key === 'string') {
-              acc[key] = curr.message;
+            if (curr.path && curr.path.length > 0 && typeof curr.path[0] === 'string') {
+              acc[curr.path[0]] = curr.message;
             }
             return acc;
           },
@@ -90,9 +103,10 @@ export const useCreateRepliesComment = (id: string) => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { id: string; value: any } }
   ) => {
     const { id, value } = e.target;
-    console.log('Input field changed:', { id, value });
     
-    setformData({ ...formData, [id]: value });
+    const processedValue = id === 'isAnonymous' ? Boolean(value) : value;
+    
+    setFormData({ ...formData, [id]: processedValue });
     
     if (errors[id]) {
       setErrors((prevErrors) => {
@@ -105,11 +119,11 @@ export const useCreateRepliesComment = (id: string) => {
   return {
     mutate,
     formData,
-    setformData,
+    setFormData,
     isPending,
     errors,
     setErrors,
     handleSubmit,
     handleInputField
   };
-}
+};

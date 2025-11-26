@@ -2,18 +2,17 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import showToast from '@/utils/showToast';
 import { useState } from 'react';
 import { z } from 'zod'; 
-import { group } from 'console';
 import { createComment } from '@/services/posts/comments/postComments';
 
 interface CreatePostsCommentInterface {
     content: string;
-    isAnonymous: boolean
+    isAnonymous: boolean;
 }
 
 interface CommentMutationParams {
+    courseId: string; 
+    postId: string;   
     data: CreatePostsCommentInterface;
-    id: string;
-    ids: string;
 }
 
 const initialData: CreatePostsCommentInterface = {
@@ -21,16 +20,16 @@ const initialData: CreatePostsCommentInterface = {
     isAnonymous: false
 };
 
-export const useCreateComment = (ids: string) => {
+export const useCreateComment = (courseId: string) => {
     const [formData, setFormData] = useState<CreatePostsCommentInterface>(initialData);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const queryClient = useQueryClient();
 
-    const { mutate , isPending} = useMutation({
-        mutationFn: ({ data, id}: CommentMutationParams) => {
+    const { mutate, isPending } = useMutation({
+        mutationFn: ({ courseId, postId, data }: CommentMutationParams) => {
             return createComment({
-                ids,
-                id,
+                ids: postId,      // postId maps to ids in API
+                id: courseId,     // courseId maps to id in API
                 content: data.content,
                 isAnonymous: data.isAnonymous 
             });
@@ -41,16 +40,16 @@ export const useCreateComment = (ids: string) => {
             setFormData(initialData);
             setErrors({});
             
+            // Invalidate all relevant queries
             queryClient.invalidateQueries({
-                queryKey: ["Posts", variables.id]
-        })
+                queryKey: ["Posts", variables.courseId]
+            });
             queryClient.invalidateQueries({ 
-                queryKey: ["Posts", variables.id, variables.ids] 
+                queryKey: ["Posts", variables.courseId, variables.postId] 
             });
             queryClient.invalidateQueries({ 
                 queryKey: ['Posts'] 
             });
-
         },
         onError: (error: any) => {
             const errorMessage = error?.response?.data?.message || 
@@ -61,16 +60,22 @@ export const useCreateComment = (ids: string) => {
         },
     });
 
-    const handleSubmit = async (id: string, ids: string) => {
+    const handleSubmit = async (postId: string, courseId: string) => {
+        // Validate before submitting
+        if (!formData.content?.trim()) {
+            setErrors({ content: 'Comment content is required' });
+            return;
+        }
+
         try {
             await mutate({
-                ids,
-                id,
+                courseId,
+                postId,
                 data: formData
             });
         } catch (error) {
             if (error instanceof z.ZodError) {
-                const fieldErrors = (error as z.ZodError).issues.reduce(
+                const fieldErrors = error.issues.reduce(
                     (acc: Record<string, string>, curr) => {
                         if (curr.path && curr.path.length > 0 && typeof curr.path[0] === 'string') {
                             acc[curr.path[0]] = curr.message;
@@ -86,7 +91,7 @@ export const useCreateComment = (ids: string) => {
 
     const handleInputField = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { id: string; value: any } }
-      ) => {
+    ) => {
         const { id, value } = e.target;
         
         const processedValue = id === 'isAnonymous' ? Boolean(value) : value;
@@ -94,12 +99,12 @@ export const useCreateComment = (ids: string) => {
         setFormData({ ...formData, [id]: processedValue });
         
         if (errors[id]) {
-          setErrors((prevErrors) => {
-            const { [id]: _, ...rest } = prevErrors;
-            return rest;
-          });
+            setErrors((prevErrors) => {
+                const { [id]: _, ...rest } = prevErrors;
+                return rest;
+            });
         }
-      };
+    };
 
     return {
         mutate,
