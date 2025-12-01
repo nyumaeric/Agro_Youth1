@@ -92,31 +92,6 @@ export const investorMenuItems: NavItem[] = [
     icon: createIcon(Home)
   },
   {
-    title: "Courses",
-    href: "/dashboard/courses",
-    icon: createIcon(BookOpen),
-    items: [
-      {
-        title: "All Courses",
-        href: "/dashboard/courses"
-      },
-      {
-        title: "Enrolled Courses",
-        href: "/dashboard/courses/enrolled"
-      }
-    ]
-  },
-  {
-    title: "Certificates",
-    href: "/dashboard/certificates",
-    icon: createIcon(Award)
-  },
-  {
-    title: "Products",
-    href: "/dashboard/products",
-    icon: createIcon(ShoppingBag)
-  },
-  {
     title: "Live Sessions",
     href: "/dashboard/livesessions",
     icon: createIcon(Group)

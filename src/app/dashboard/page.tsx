@@ -273,29 +273,6 @@ const Dashboard: React.FC = () => {
           </>
         ) : (
           <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.totalCourses || 0}</div>
-                <p className="text-xs text-muted-foreground">{stats?.inProgressCourses || 0} in progress</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                <Award className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.completedCourses || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats?.totalCourses ? Math.round(((stats?.completedCourses || 0) / stats.totalCourses) * 100) : 0}% completion rate
-                </p>
-              </CardContent>
-            </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -325,41 +302,8 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Investor Main Content */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Continue Learning */}
-        {recentCourses.length > 0 && (
-          <Card className="col-span-4">
-            <CardHeader>
-              <CardTitle>Continue Learning</CardTitle>
-              <CardDescription>Your active courses</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentCourses.map((course: any) => (
-                  <div key={course.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-semibold">{course.title}</p>
-                      <Badge variant="outline">{course.category}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {course.completedModules}/{course.modules} modules
-                    </p>
-                    <Progress value={course.progress} className="mb-2" />
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Progress: {course.progress}%</span>
-                      <Link href={`/dashboard/courses/${course.id}/modules`}>
-                        <Button size="sm">Continue <ArrowRight className="ml-2 h-4 w-4 cursor-pointer" /></Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
 
-        {/* Received Applications */}
-{/* Received Applications */}
     <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Received Applications</CardTitle>
